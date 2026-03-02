@@ -18,26 +18,13 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-/**
- * ✅ 서버 주소
- * - Android Emulator: http://10.0.2.2:8080/RunFit
- * - iOS Simulator:    http://localhost:8080/RunFit
- * - 실기기:           http://PC의_내부IP:8080/RunFit  (예: http://192.168.0.12:8080/RunFit)
- */
 const BASE_URL = "http://172.20.10.4:8080/RunFIT_";
 
-// 토큰 저장 키 (로그인 API 만들면 저장해두고 여기서 꺼내 씀)
 const TOKEN_KEY = "runfit_token";
-
-/** ✅ index.tsx 최종본처럼 바닥 탭 높이 */
 const TAB_H = 96;
 
-/** ✅ 전역 로그인정보 (index/Record에서 쓰는 방식) */
 const getAuthGlobal = () => (globalThis as any).__RUNFIT_AUTH__ || null;
 
-/* =========================
-   ✅ Index.tsx와 동일한 전역 테마 저장소(버스) - 토글 버튼은 여기서 만들지 않음
-========================= */
 type ThemeMode = "dark" | "light";
 type ThemeBus = { subs: Set<(m: ThemeMode) => void> };
 
@@ -122,8 +109,6 @@ function useRunFitTheme() {
   return { mode, ui };
 }
 
-/* ===================== Types ===================== */
-
 type CalendarSummary = {
   intakeKcal: number;
   burnKcal: number;
@@ -167,20 +152,79 @@ type DayDetailResponse = {
   meals: Record<string, DayMealItem[]>;
 };
 
-/* ===================== Screen ===================== */
+/* =========================
+   간이 추천섭취량(성별만)
+   - 30대 평균 가정 시발 오류 존나떠서 걍 더미데이터 넣자 
+   - 권장 kcal + PFC g 표시
+========================= */
+function RecommendIntakeBox({
+  ui,
+  gender,
+  dayBurnKcal,
+}: {
+  ui: any;
+  gender: "M" | "F";
+  dayBurnKcal: number;
+}) {
+  //  성별만으로 대충 고정 권장 칼로리
+  const baseKcal = gender === "M" ? 2400 : 1900;
 
+  //  탄/단/지 비율 (50/25/25) 더미데이타 
+  const carbRatio = 0.5;
+  const proteinRatio = 0.25;
+  const fatRatio = 0.25;
+
+  const carbG = Math.round((baseKcal * carbRatio) / 4);
+  const proteinG = Math.round((baseKcal * proteinRatio) / 4);
+  const fatG = Math.round((baseKcal * fatRatio) / 9);
+
+  const extra = Math.max(0, Math.round(dayBurnKcal || 0));
+  const todayMax = baseKcal + extra;
+
+  return (
+    <Box ui={ui} title="おすすめ摂取量">
+  
+      <View style={{ marginTop: 12 }}>
+        <Text style={{ color: ui.text, fontWeight: "900", marginBottom: 8 }}>目安のPFC（g/日）</Text>
+        <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+          <Pill ui={ui} label="炭水化物" value={`${carbG} g`} />
+          <Pill ui={ui} label="たんぱく質" value={`${proteinG} g`} />
+          <Pill ui={ui} label="脂質" value={`${fatG} g`} />
+        </View>
+      </View>
+
+      <View style={{ marginTop: 12 }}>
+        <Text style={{ color: ui.muted, fontWeight: "800" }}>
+          今日の運動（消費 {extra} kcal）: 目安上限 {todayMax} kcal
+        </Text>
+      </View>
+
+      
+    </Box>
+  );
+}
+
+/* =========================
+    스크린
+========================= */
 export default function FoodDate() {
-  // ✅ 전역 테마 (Index에서 토글되면 여기 자동 반영)
   const { mode, ui } = useRunFitTheme();
 
   const pathname = usePathname();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+
+// 식사 리스트 영역만 스크롤될 높이 ( 숫자만 간단하게 조잘가능 ㅇ222)
+const mealsMaxH = Math.min(420, Math.max(180, Math.floor(height * 0.38)));
 
   const params = useLocalSearchParams<{ ym?: string }>();
   const today = getToday();
 
   const auth = getAuthGlobal();
   const userId: number | null = auth?.userId ?? null;
+
+  // 성별만 사용 오류 더미데이터 222
+  const rawGender = (auth as any)?.gender;
+  const gender: "M" | "F" = rawGender === "F" || rawGender === "female" ? "F" : "M";
 
   const [ym, setYm] = useState<string>(() => {
     const p = params?.ym;
@@ -205,7 +249,7 @@ export default function FoodDate() {
 
   const CAL_GAP = 6;
   const OUTER_PAD = 16;
-  const CARD_PAD = 16; // styles.card padding에 맞춤
+  const CARD_PAD = 16;
   const gridW = Math.max(280, width - OUTER_PAD * 2 - CARD_PAD * 2);
   const cellSize = Math.floor((gridW - CAL_GAP * 6) / 7);
   const cellH = Math.max(44, Math.min(cellSize, 56));
@@ -241,6 +285,7 @@ export default function FoodDate() {
     })();
   }, [userId]);
 
+  //  월 달력
   useEffect(() => {
     if (!authReady) return;
 
@@ -352,16 +397,7 @@ export default function FoodDate() {
           <View style={{ flexDirection: "row", marginTop: 12, marginBottom: 8 }}>
             {["日", "月", "火", "水", "木", "金", "土"].map((d, idx) => (
               <View key={d} style={{ width: cellSize, marginRight: idx === 6 ? 0 : CAL_GAP }}>
-                <Text
-                  style={{
-                    color: ui.muted,
-                    fontSize: 12,
-                    fontWeight: "900",
-                    textAlign: "center",
-                  }}
-                >
-                  {d}
-                </Text>
+                <Text style={{ color: ui.muted, fontSize: 12, fontWeight: "900", textAlign: "center" }}>{d}</Text>
               </View>
             ))}
           </View>
@@ -404,8 +440,9 @@ export default function FoodDate() {
       </View>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={closeModal}>
-        <Pressable onPress={closeModal} style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.65)" }]}>
-          <Pressable onPress={() => {}} style={[styles.modal, { borderColor: ui.line, backgroundColor: ui.cardSolid }]}>
+        <View style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.65)" }]}>
+  <Pressable style={StyleSheet.absoluteFill} onPress={closeModal} />
+          <View style={[styles.modal, { borderColor: ui.line, backgroundColor: ui.cardSolid }]}>
             <View style={{ padding: 16 }}>
               <View style={styles.modalTop}>
                 <View style={{ flex: 1, minWidth: 0 }}>
@@ -484,75 +521,84 @@ export default function FoodDate() {
                     </Box>
                   )}
 
+                  {/*  간이 추천 섭취량 + PFC (성별만) */}
+                  <RecommendIntakeBox ui={ui} gender={gender} dayBurnKcal={dayDetail.summary.burnKcal} />
+
                   <Box ui={ui} title="食事合計">
                     <Text style={{ color: ui.muted, fontWeight: "900" }}>
                       <Text style={{ color: ui.text, fontWeight: "900" }}>{Math.round(dayDetail.summary.intakeKcal)}</Text>{" "}
                       kcal · 炭{" "}
-                      <Text style={{ color: ui.text, fontWeight: "900" }}>
-                        {Math.round(dayDetail.summary.c * 10) / 10}
-                      </Text>
+                      <Text style={{ color: ui.text, fontWeight: "900" }}>{Math.round(dayDetail.summary.c * 10) / 10}</Text>
                       g · たん{" "}
-                      <Text style={{ color: ui.text, fontWeight: "900" }}>
-                        {Math.round(dayDetail.summary.p * 10) / 10}
-                      </Text>
+                      <Text style={{ color: ui.text, fontWeight: "900" }}>{Math.round(dayDetail.summary.p * 10) / 10}</Text>
                       g · 脂{" "}
-                      <Text style={{ color: ui.text, fontWeight: "900" }}>
-                        {Math.round(dayDetail.summary.f * 10) / 10}
-                      </Text>
-                      g
+                      <Text style={{ color: ui.text, fontWeight: "900" }}>{Math.round(dayDetail.summary.f * 10) / 10}</Text>g
                     </Text>
                   </Box>
 
-                  {mealOrder.map((t) => {
-                    const list = dayDetail.meals?.[t] || [];
-                    if (!list.length) return null;
-                    return (
-                      <Box key={t} ui={ui} title={t}>
-                        {list.map((m) => (
-                          <ItemRow
-                            key={m.id}
-                            ui={ui}
-                            title={m.foodName}
-                            meta={[
-                              `${m.servingGram}g`,
-                              `${Math.round(m.cal)} kcal`,
-                              `炭 ${Math.round(m.c * 10) / 10}g`,
-                              `たん ${Math.round(m.p * 10) / 10}g`,
-                              `脂 ${Math.round(m.f * 10) / 10}g`,
-                            ]}
-                            right={
-                              <Pressable
-                                onPress={() => onDeleteMeal(m.id)}
-                                style={({ pressed }) => [
-                                  styles.delBtn,
-                                  {
-                                    borderColor: ui.line,
-                                    backgroundColor: "rgba(255,90,95,0.12)",
-                                    opacity: pressed ? 0.8 : 1,
-                                  },
-                                ]}
-                              >
-                                <Text style={{ color: ui.mode === "dark" ? "#ffd9da" : "rgba(255,90,95,0.95)", fontWeight: "900" }}>
-                                  削除
-                                </Text>
-                              </Pressable>
-                            }
-                          />
-                        ))}
-                      </Box>
-                    );
-                  })}
+                  {/*  식사합계 아래(朝/昼/夜/間食) 영역만 스크롤 */}
+  <ScrollView
+  style={{ maxHeight: mealsMaxH }}
+  contentContainerStyle={{ paddingBottom: 6 }}
+  showsVerticalScrollIndicator={false}
+  nestedScrollEnabled
+>
+  {mealOrder.map((t) => {
+    const list = dayDetail.meals?.[t] || [];
+    if (!list.length) return null;
+
+    return (
+      <Box key={t} ui={ui} title={t}>
+        {list.map((m) => (
+          <ItemRow
+            key={m.id}
+            ui={ui}
+            title={m.foodName}
+            meta={[
+              `${m.servingGram}g`,
+              `${Math.round(m.cal)} kcal`,
+              `炭 ${Math.round(m.c * 10) / 10}g`,
+              `たん ${Math.round(m.p * 10) / 10}g`,
+              `脂 ${Math.round(m.f * 10) / 10}g`,
+            ]}
+            right={
+              <Pressable
+                onPress={() => onDeleteMeal(m.id)}
+                style={({ pressed }) => [
+                  styles.delBtn,
+                  {
+                    borderColor: ui.line,
+                    backgroundColor: "rgba(255,90,95,0.12)",
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: ui.mode === "dark" ? "#ffd9da" : "rgba(255,90,95,0.95)",
+                    fontWeight: "900",
+                  }}
+                >
+                  削除
+                </Text>
+              </Pressable>
+            }
+          />
+        ))}
+      </Box>
+    );
+  })}
+</ScrollView>
+
                 </View>
               )}
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
 }
-
-/* ===================== UI Parts ===================== */
 
 function BgDecor({ mode, ui }: { mode: "dark" | "light"; ui: any }) {
   if (mode === "light") {
@@ -590,17 +636,14 @@ function BgDecor({ mode, ui }: { mode: "dark" | "light"; ui: any }) {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-
       <LinearGradient
         colors={["rgba(109,255,139,0.16)", "rgba(90,140,255,0.14)", "rgba(11,15,20,0)"]}
         start={{ x: 0.15, y: 0 }}
         end={{ x: 0.85, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-
       <View style={[styles.glow, { top: -150, left: -140, backgroundColor: "rgba(109,255,139,0.16)" }]} />
       <View style={[styles.glow, { top: -170, right: -150, backgroundColor: "rgba(90,140,255,0.16)" }]} />
-
       <LinearGradient
         colors={["rgba(11,15,20,0)", "rgba(11,15,20,0.35)", "rgba(11,15,20,0.72)"]}
         start={{ x: 0.5, y: 0.2 }}
@@ -616,7 +659,10 @@ function Header({ title, ui }: { title: string; ui: any }) {
     <View style={[styles.header, { borderBottomColor: ui.line, backgroundColor: ui.topBtnBg }]}>
       <Pressable
         onPress={() => router.back()}
-        style={({ pressed }) => [styles.backBtn, { borderColor: ui.line, opacity: pressed ? 0.7 : 1, backgroundColor: ui.topBtnBg }]}
+        style={({ pressed }) => [
+          styles.backBtn,
+          { borderColor: ui.line, opacity: pressed ? 0.7 : 1, backgroundColor: ui.topBtnBg },
+        ]}
       >
         <Text style={{ color: ui.text, fontWeight: "900" }}>‹</Text>
       </Pressable>
@@ -702,7 +748,17 @@ function Pill({ ui, label, value }: any) {
   );
 }
 
-function ItemRow({ ui, title, meta, right }: { ui: any; title: string; meta: string[]; right?: React.ReactNode }) {
+function ItemRow({
+  ui,
+  title,
+  meta,
+  right,
+}: {
+  ui: any;
+  title: string;
+  meta: string[];
+  right?: React.ReactNode;
+}) {
   return (
     <View style={[styles.itemRow, { borderColor: ui.line, backgroundColor: ui.itemBg }]}>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -721,8 +777,6 @@ function ItemRow({ ui, title, meta, right }: { ui: any; title: string; meta: str
     </View>
   );
 }
-
-/* ===================== ✅ Calendar (심플 버전) ===================== */
 
 function CalendarGrid({
   ym,
@@ -781,7 +835,12 @@ function CalendarGrid({
                   height: cellH,
                   marginRight: isLastCol ? 0 : gap,
                   marginBottom: gap,
-                  borderColor: isToday ? (ui.mode === "dark" ? "rgba(109,255,139,0.55)" : "rgba(24,169,87,0.40)") : ui.cellBorder,
+                  borderColor:
+                    isToday
+                      ? ui.mode === "dark"
+                        ? "rgba(109,255,139,0.55)"
+                        : "rgba(24,169,87,0.40)"
+                      : ui.cellBorder,
                   backgroundColor: ui.cellBg,
                   opacity: isOut ? 0.35 : pressed ? 0.82 : 1,
                 },
@@ -797,7 +856,6 @@ function CalendarGrid({
   );
 }
 
-/** ✅ 에러 메시지 출력 박스 */
 function ErrorBanner({ ui, title, message, onClose }: { ui: any; title: string; message: string; onClose: () => void }) {
   return (
     <View
@@ -838,8 +896,6 @@ function ErrorBanner({ ui, title, message, onClose }: { ui: any; title: string; 
   );
 }
 
-/* ===================== ✅ index.tsx 하단탭과 동일 TabBtn ===================== */
-
 function TabBtn({ label, icon, onPress, active, ui }: any) {
   const color = active ? ui.green : ui.text;
   const pillStyle = active
@@ -855,8 +911,6 @@ function TabBtn({ label, icon, onPress, active, ui }: any) {
     </Pressable>
   );
 }
-
-/* ===================== API Helpers ===================== */
 
 async function apiGet<T>(path: string, userId?: number | null): Promise<T> {
   const token = await AsyncStorage.getItem(TOKEN_KEY);
@@ -899,8 +953,6 @@ async function safeText(res: Response) {
     return "(no body)";
   }
 }
-
-/* ===================== Date Helpers ===================== */
 
 function getToday() {
   const d = new Date();
@@ -955,8 +1007,6 @@ function buildMonthCells(ym: string) {
   }
   return cells;
 }
-
-/* ===================== Styles ===================== */
 
 const styles = StyleSheet.create({
   glow: {

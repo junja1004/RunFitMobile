@@ -17,9 +17,6 @@ import {
 const BASE_URL = "http://172.20.10.4:8080/RunFIT_";
 const TAB_H = 96;
 
-/* =========================
-   ✅ Index.tsx와 동일한 전역 테마 저장소(버스)
-========================= */
 type ThemeMode = "dark" | "light";
 type ThemeBus = { subs: Set<(m: ThemeMode) => void> };
 
@@ -105,7 +102,6 @@ function useRunFitTheme() {
 
   return { mode, ui, toggle };
 }
-/* ========================= */
 
 type Cate = "3K" | "5K" | "10K" | "HALF";
 const CATES: Cate[] = ["3K", "5K", "10K", "HALF"];
@@ -138,7 +134,6 @@ type DetailResp = {
 export default function Ranking() {
   const pathname = usePathname();
 
-  // ✅ 전역 테마 (Index.tsx와 공유됨)
   const { mode, ui, toggle } = useRunFitTheme();
 
   const [cate, setCate] = useState<Cate>("10K");
@@ -146,7 +141,6 @@ export default function Ranking() {
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [list, setList] = useState<RankItem[]>([]);
 
-  // detail modal
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailErr, setDetailErr] = useState<string | null>(null);
@@ -303,7 +297,7 @@ export default function Ranking() {
           )}
 
           <View style={{ height: 12 }} />
-          <Hint text="※ 랭킹 유저를 터치하면 1km 구간 기록(스플릿)을 표시합니다." ui={ui} />
+          <Hint text="※ユーザーをタップすると、1kmごとのスプリットが表示されます。" ui={ui} />
         </Card>
 
         <View style={{ height: 10 }} />

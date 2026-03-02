@@ -12,25 +12,16 @@ import {
   View,
 } from "react-native";
 
-/** ✅ 서버 주소(너 환경에 맞게) */
 const BASE_URL = "http://192.168.3.16:8080/RunFit";
-
-/** (있으면) JSON API로 goal 저장하는 엔드포인트 — 없으면 404 떠도 OK → 서블릿로 fallback */
 const GOAL_API = `${BASE_URL}/api/auth/register/goal`;
-
-/** ✅ 네가 준 웹 서블릿 (세션 기반) */
 const GOAL_SERVLET = `${BASE_URL}/RegisterGoalServlet`;
 
-/** 전역 로그인정보(있으면) */
 const getAuthGlobal = () => (globalThis as any).__RUNFIT_AUTH__ || null;
 
 const notify = (title: string, msg: string) => Alert.alert(title, msg);
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-/* =========================
-   ✅ 전역 테마 저장소 (index.tsx와 키 동일)
-========================= */
 type ThemeMode = "dark" | "light";
 type ThemeBus = { subs: Set<(m: ThemeMode) => void> };
 
@@ -55,7 +46,6 @@ function subscribeThemeMode(listener: (m: ThemeMode) => void): () => void {
   return () => bus.subs.delete(listener);
 }
 
-// ✅ 이 화면용 컬러셋
 const DARK_UI = {
   mode: "dark" as const,
   bg: "#0b0f14",
@@ -65,7 +55,6 @@ const DARK_UI = {
   text: "rgba(255,255,255,0.92)",
   muted: "rgba(255,255,255,0.62)",
   green: "#6dff8b",
-  danger: "#ff5a5f",
   pillActiveBg: "rgba(109,255,139,0.10)",
   pillActiveBorder: "rgba(109,255,139,0.45)",
   pillIdleBg: "rgba(0,0,0,0.18)",
@@ -81,7 +70,6 @@ const LIGHT_UI = {
   text: "rgba(11,15,20,0.92)",
   muted: "rgba(11,15,20,0.60)",
   green: "#18a957",
-  danger: "#ef4444",
   pillActiveBg: "rgba(24,169,87,0.14)",
   pillActiveBorder: "rgba(24,169,87,0.28)",
   pillIdleBg: "rgba(15,23,42,0.04)",
@@ -100,14 +88,11 @@ function useRunFitTheme() {
   return { mode, ui };
 }
 
-type Ui = ReturnType<typeof useRunFitTheme>["ui"];
-/* ========================= */
-
 const encodeMulti = (obj: Record<string, string | string[]>) => {
   const parts: string[] = [];
   for (const [k, v] of Object.entries(obj)) {
     if (Array.isArray(v)) {
-      v.forEach((vv) => parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(vv ?? "")}`));
+      for (const vv of v) parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(vv ?? "")}`);
     } else {
       parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v ?? "")}`);
     }
@@ -115,13 +100,13 @@ const encodeMulti = (obj: Record<string, string | string[]>) => {
   return parts.join("&");
 };
 
-async function safeJson(res: Response) {
+const safeJson = async (res: Response) => {
   try {
     return await res.json();
   } catch {
     return null;
   }
-}
+};
 
 const GOALS = [
   { value: "健康管理", title: "健康管理", sub: "体調・生活習慣の改善" },
@@ -129,9 +114,9 @@ const GOALS = [
   { value: "筋力アップ", title: "筋力アップ", sub: "筋肉量・パフォーマンス向上" },
   { value: "ランニング記録向上", title: "ランニング記録向上", sub: "タイムや距離を伸ばす" },
   { value: "体力向上", title: "体力向上", sub: "持久力・基礎体力アップ" },
-];
+] as const;
 
-const WALK_MINS = ["0", "30", "60", "90", "120", "150", "180", "210", "240", "300", "360"];
+const WALK_MINS = ["0", "30", "60", "90", "120", "150", "180", "210", "240", "300", "360"] as const;
 
 const LEVELS = [
   "運動なし",
@@ -139,33 +124,28 @@ const LEVELS = [
   "普通の運動（1時間程度）",
   "激しい運動（1時間以上）",
   "高強度運動（2時間以上）",
-];
+] as const;
 
 export default function RegisterGoal() {
   const { ui } = useRunFitTheme();
-
   const params = useLocalSearchParams();
   const auth = getAuthGlobal();
 
   const userIdStr = one(params.userId as any) ?? auth?.userId?.toString() ?? "";
   const token = one(params.token as any) ?? auth?.token ?? "";
-
   const userId = Number(userIdStr || 0) || 0;
 
   const [selected, setSelected] = useState<string[]>([]);
-  const [dailyWalkMin, setDailyWalkMin] = useState<string>("0");
+  const [dailyWalkMin, setDailyWalkMin] = useState<string>(WALK_MINS[0]);
   const [level, setLevel] = useState<string>(LEVELS[0]);
-
   const [loading, setLoading] = useState(false);
-
-  const canSubmit = useMemo(() => !loading, [loading]);
 
   const toggleGoal = (v: string) => {
     setSelected((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
   };
 
   const submit = async () => {
-    if (!canSubmit) return;
+    if (loading) return;
 
     setLoading(true);
     try {
@@ -179,7 +159,6 @@ export default function RegisterGoal() {
       let ok = false;
       let lastErr: any = null;
 
-      /** 1) ✅ API 먼저 시도 */
       if (token || userId) {
         try {
           const r = await fetch(GOAL_API, {
@@ -195,9 +174,7 @@ export default function RegisterGoal() {
             const j = await safeJson(r);
             if (j?.ok === false) throw new Error(j?.message || "goal api failed");
             ok = true;
-          } else if (r.status === 404 || r.status === 405) {
-            // API 없음 → fallback
-          } else {
+          } else if (r.status !== 404 && r.status !== 405) {
             const t = await r.text();
             throw new Error(`GOAL_API HTTP ${r.status}: ${t.slice(0, 160)}`);
           }
@@ -206,7 +183,6 @@ export default function RegisterGoal() {
         }
       }
 
-      /** 2) ✅ 세션 서블릿 fallback */
       if (!ok) {
         const body = encodeMulti({
           goals: selected.length ? selected : [""],
@@ -276,11 +252,7 @@ export default function RegisterGoal() {
                 <Pressable
                   key={g.value}
                   onPress={() => toggleGoal(g.value)}
-                  style={({ pressed }) => [
-                    styles.goalItem,
-                    itemStyle,
-                    { opacity: pressed ? 0.8 : 1 },
-                  ]}
+                  style={({ pressed }) => [styles.goalItem, itemStyle, { opacity: pressed ? 0.8 : 1 }]}
                 >
                   <View style={[styles.check, checkStyle]}>
                     {on ? <View style={[styles.checkDot, { backgroundColor: ui.green }]} /> : null}
@@ -314,11 +286,7 @@ export default function RegisterGoal() {
                 <Pressable
                   key={m}
                   onPress={() => setDailyWalkMin(m)}
-                  style={({ pressed }) => [
-                    styles.pill,
-                    pillStyle,
-                    { opacity: pressed ? 0.8 : 1 },
-                  ]}
+                  style={({ pressed }) => [styles.pill, pillStyle, { opacity: pressed ? 0.8 : 1 }]}
                 >
                   <Text style={[styles.pillText, pillTextStyle]}>{m}分</Text>
                 </Pressable>
@@ -343,17 +311,9 @@ export default function RegisterGoal() {
                 <Pressable
                   key={lv}
                   onPress={() => setLevel(lv)}
-                  style={({ pressed }) => [
-                    styles.levelRow,
-                    rowStyle,
-                    { opacity: pressed ? 0.8 : 1 },
-                  ]}
+                  style={({ pressed }) => [styles.levelRow, rowStyle, { opacity: pressed ? 0.8 : 1 }]}
                 >
-                  <Ionicons
-                    name={on ? "radio-button-on" : "radio-button-off"}
-                    size={18}
-                    color={on ? ui.green : ui.muted}
-                  />
+                  <Ionicons name={on ? "radio-button-on" : "radio-button-off"} size={18} color={on ? ui.green : ui.muted} />
                   <Text style={[styles.levelText, { color: ui.text }]}>{lv}</Text>
                 </Pressable>
               );
@@ -363,11 +323,7 @@ export default function RegisterGoal() {
           <Pressable
             onPress={submit}
             disabled={loading}
-            style={[
-              styles.submit,
-              { backgroundColor: ui.green },
-              loading && { opacity: 0.55 },
-            ]}
+            style={[styles.submit, { backgroundColor: ui.green }, loading && { opacity: 0.55 }]}
           >
             {loading ? (
               <ActivityIndicator />
@@ -391,7 +347,6 @@ export default function RegisterGoal() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   container: { padding: 18, paddingBottom: 28 },
-
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -400,7 +355,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: "900" },
   subtitle: { marginTop: 6, fontSize: 12, lineHeight: 18, fontWeight: "700" },
-
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -409,16 +363,9 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   badgeText: { fontSize: 11, fontWeight: "900" },
-
-  card: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-  },
-
+  card: { borderWidth: 1, borderRadius: 18, padding: 16 },
   sectionTitle: { fontSize: 13, fontWeight: "900" },
   hint: { marginTop: 6, marginBottom: 10, fontSize: 11, lineHeight: 16, fontWeight: "700" },
-
   grid: { marginTop: 4 },
   goalItem: {
     flexDirection: "row",
@@ -428,7 +375,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
   },
-
   check: {
     width: 18,
     height: 18,
@@ -438,19 +384,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 10,
   },
-  checkDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 4,
-  },
+  checkDot: { width: 10, height: 10, borderRadius: 4 },
   goalTitle: { fontSize: 13, fontWeight: "900" },
   goalSub: { marginTop: 2, fontSize: 11, fontWeight: "700" },
-
-  divider: {
-    height: 1,
-    marginVertical: 12,
-  },
-
+  divider: { height: 1, marginVertical: 12 },
   pillsRow: { flexDirection: "row", flexWrap: "wrap" },
   pill: {
     paddingHorizontal: 10,
@@ -461,7 +398,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   pillText: { fontWeight: "900", fontSize: 11 },
-
   levelRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -472,7 +408,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   levelText: { marginLeft: 8, fontSize: 12, fontWeight: "800" },
-
   submit: {
     marginTop: 10,
     borderRadius: 14,
@@ -482,6 +417,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   submitText: { marginLeft: 8, fontWeight: "900", fontSize: 13 },
-
   note: { marginTop: 10, fontSize: 11, lineHeight: 16, fontWeight: "700" },
 });

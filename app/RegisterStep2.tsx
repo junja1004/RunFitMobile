@@ -3,20 +3,19 @@ import * as Location from "expo-location";
 import { router, usePathname } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    Alert,
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-    useWindowDimensions,
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
 } from "react-native";
 
-/** 전역 로그인정보 */
 const getAuthGlobal = () => (globalThis as any).__RUNFIT_AUTH__ || null;
 
 type DistanceType = "3K" | "5K" | "10K" | "HALF" | "CUSTOM";
@@ -32,7 +31,6 @@ type Profile = {
   heightCm: number | null;
 };
 
-/** ✅ 캘린더 초록불용 월 요약 타입 */
 type MonthRunItem = {
   runKm?: number;
   distanceKm?: number;
@@ -50,11 +48,10 @@ type MonthRunResponse = {
   dates?: string[];
 };
 
-// ✅ day 상세 + splits 연동용 타입
 type SplitItem = { km: number; m: number; sec: number };
 
 type DayRunItem = {
-  runId?: number; // ✅ run_record.id
+  runId?: number;
   runNo?: string;
   distanceType?: string;
   distanceKm: number;
@@ -128,7 +125,6 @@ function secToMmss(totalSec: number) {
   return `${mm}:${ss}`;
 }
 
-/** 하버사인 */
 function toRad(v: number) {
   return (v * Math.PI) / 180;
 }
@@ -147,10 +143,9 @@ function haversineMeters(aLat: number, aLon: number, bLat: number, bLon: number)
   return R * c;
 }
 
-/** 월 캘린더 (월요일 시작) */
 function buildMonthGrid(year: number, month0: number) {
   const first = new Date(year, month0, 1);
-  const firstDow = first.getDay(); // 0=Sun
+  const firstDow = first.getDay();
   const monStart = (firstDow + 6) % 7;
 
   const start = new Date(year, month0, 1);
@@ -164,15 +159,9 @@ function buildMonthGrid(year: number, month0: number) {
   return cells;
 }
 
-// ✅ 하단 탭 크게 (index.tsx와 동일)
 const TAB_H = 96;
-
-// ✅ 터치 영역 확대(공통)
 const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
 
-/* =========================
-   ✅ 전역 테마 저장소 (RegisterGoal.tsx와 동일 키)
-========================= */
 type ThemeMode = "dark" | "light";
 type ThemeBus = { subs: Set<(m: ThemeMode) => void> };
 
@@ -248,52 +237,41 @@ function useRunFitTheme() {
   const ui = useMemo(() => (mode === "dark" ? DARK_UI : LIGHT_UI), [mode]);
   return { mode, ui };
 }
-/* ========================= */
 
 export default function Record() {
   const pathname = usePathname();
   const { ui } = useRunFitTheme();
 
-  // ✅ 서버 주소(너 환경에 맞게 1곳만!)
-  // NOTE: 너 프로젝트 컨텍스트가 RunFit 인지 RunFIT_ 인지 맞춰서 여기만 바꿔.
   const BASE_URL = "http://172.20.10.4:8080/RunFIT_";
 
   const auth = getAuthGlobal();
   const userId: number | null = auth?.userId ?? null;
   const isGuest = !userId;
 
-  // ✅ 오늘(세션 기준): 측정/저장은 무조건 이 날짜로만
   const todayISO = useMemo(() => getToday(), []);
 
-  // ===== UI Step =====
   const [step, setStep] = useState<UiStep>("CALENDAR");
 
-  // ===== 날짜 선택(보기용) =====
   const [selectedDate, setSelectedDate] = useState(todayISO);
   const init = new Date();
   const [viewY, setViewY] = useState(init.getFullYear());
   const [viewM, setViewM] = useState(init.getMonth());
 
-  // ✅ 월 캘린더 초록불 데이터
   const [monthRuns, setMonthRuns] = useState<Record<string, MonthRunItem>>({});
   const [loadingMonthRuns, setLoadingMonthRuns] = useState(false);
 
-  // ✅ 날짜 터치 -> day 상세 모달 (열람)
   const [dayModalOpen, setDayModalOpen] = useState(false);
 
-  // ✅ day 상세 + splits 캐시
   const [dayDetail, setDayDetail] = useState<DayDetailResponse | null>(null);
   const [loadingDay, setLoadingDay] = useState(false);
 
   const [splitMap, setSplitMap] = useState<Record<number, SplitItem[]>>({});
   const splitMapRef = useRef<Record<number, SplitItem[]>>({});
 
-  // ===== “오늘 시작” 플로우 모달 =====
   const [startModeModalOpen, setStartModeModalOpen] = useState(false);
   const [distanceModalOpen, setDistanceModalOpen] = useState(false);
   const [timeModalOpen, setTimeModalOpen] = useState(false);
 
-  // ✅✅✅ 숫자 셀렉트(드롭다운 느낌) 모달
   const [numPickerOpen, setNumPickerOpen] = useState(false);
   const [numPickerTitle, setNumPickerTitle] = useState("");
   const [numPickerValues, setNumPickerValues] = useState<number[]>([]);
@@ -308,41 +286,34 @@ export default function Record() {
     setNumPickerOpen(true);
   };
 
-  // ===== 플랜 선택(거리/시간/자유) =====
   const [goalMode, setGoalMode] = useState<GoalMode>("DISTANCE");
 
   const [planDistanceType, setPlanDistanceType] = useState<DistanceType>("5K");
   const [targetKmText, setTargetKmText] = useState<string>("5.00");
 
-  // 시간 목표(셀렉트)
   const [pickH, setPickH] = useState(0);
   const [pickM, setPickM] = useState(30);
   const [pickS, setPickS] = useState(0);
   const [targetTimeText, setTargetTimeText] = useState<string>("00:30:00");
 
-  // ===== 기록 입력(메모) =====
   const [memo, setMemo] = useState<string>("");
 
-  // ===== 저장용 타입/결과 =====
-  const [distanceType, setDistanceType] = useState<DistanceType>("CUSTOM"); // 저장용 타입
-  const [distanceKm, setDistanceKm] = useState<string>("0.00"); // 실제 측정 누적
+  const [distanceType, setDistanceType] = useState<DistanceType>("CUSTOM");
+  const [distanceKm, setDistanceKm] = useState<string>("0.00");
   const [timeHms, setTimeHms] = useState<string>("00:00:00");
 
-  // 프로필/칼로리
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileHint, setProfileHint] = useState<string>(isGuest ? "ゲストモード：保存不可" : "プロフィール読み込み中...");
   const [calories, setCalories] = useState<number | null>(null);
 
-  // ✅ 로그창 제거 요청 → UI 표시 안 함 (디버그 값은 남겨둠)
   const [resultText, setResultText] = useState<string>("");
 
-  // ===== GPS 측정 =====
   const [runState, setRunState] = useState<RunState>("IDLE");
-  const [gpsHint, setGpsHint] = useState<string>(""); // ✅ UI에서는 안 보여줌(요구사항)
+  const [gpsHint, setGpsHint] = useState<string>("");
 
   const gpsSubRef = useRef<Location.LocationSubscription | null>(null);
-  const startMsRef = useRef<number>(0); // 세그먼트 시작 시각
-  const accMsRef = useRef<number>(0); // 누적(일시정지 포함)
+  const startMsRef = useRef<number>(0);
+  const accMsRef = useRef<number>(0);
   const elapsedSecRef = useRef<number>(0);
 
   const metersRef = useRef<number>(0);
@@ -356,7 +327,6 @@ export default function Record() {
   const lastSpeedRef = useRef<number | null>(null);
   const lockCountRef = useRef<number>(0);
 
-  // ✅ “목표 자동 종료” 최신값 ref
   const goalModeRef = useRef<GoalMode>("DISTANCE");
   const targetKmRef = useRef<number | null>(5.0);
   const targetSecRef = useRef<number | null>(1800);
@@ -375,7 +345,6 @@ export default function Record() {
     targetSecRef.current = sec != null && sec > 0 ? sec : null;
   }, [targetTimeText]);
 
-  /** ✅ 월별 런닝 기록 날짜 가져오기 (캘린더 초록불) */
   const loadMonthRuns = async (ym: string) => {
     if (!userId) {
       setMonthRuns({});
@@ -426,10 +395,9 @@ export default function Record() {
     }
   };
 
-  // ✅ runId로 splits 가져오기
   const loadSplitsByRunId = async (runId: number) => {
     if (!userId) return;
-    if (splitMapRef.current[runId]) return; // ✅ 캐시 있으면 끝
+    if (splitMapRef.current[runId]) return;
 
     try {
       const url = `${BASE_URL}/api/record/add?mode=splits&runId=${encodeURIComponent(String(runId))}`;
@@ -452,7 +420,6 @@ export default function Record() {
     }
   };
 
-  // ✅ day 상세 로드: /api/record/add?mode=day
   const loadDayDetail = async (dateISO: string) => {
     if (!userId) {
       setDayDetail(null);
@@ -476,7 +443,6 @@ export default function Record() {
 
       setDayDetail(data as DayDetailResponse);
 
-      // ✅ runId 있으면 splits 미리 로드
       const items: DayRunItem[] = Array.isArray(data.items) ? data.items : [];
       items.forEach((it) => {
         if (it.runId) loadSplitsByRunId(it.runId);
@@ -497,7 +463,6 @@ export default function Record() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewY, viewM, userId]);
 
-  /** 프로필 로드 (로그인일 때만) */
   const loadProfile = async () => {
     if (!userId) return;
 
@@ -543,7 +508,6 @@ export default function Record() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // calories 계산(필요하면 나중에)
   useEffect(() => {
     const km = Number(distanceKm);
     const sec = hmsToSeconds(timeHms);
@@ -554,12 +518,10 @@ export default function Record() {
     setCalories(null);
   }, [distanceKm, timeHms, profile]);
 
-  // ✅ RUN 들어가면 날짜는 무조건 오늘로 고정
   useEffect(() => {
     if (step === "RUN" && selectedDate !== todayISO) setSelectedDate(todayISO);
   }, [step, selectedDate, todayISO]);
 
-  // ===== 선택일(모달/요약) 계산 =====
   const picked = monthRuns[selectedDate];
 
   const pickedKm = Number(picked?.distanceKm ?? picked?.runKm ?? 0);
@@ -577,7 +539,6 @@ export default function Record() {
 
   const metersText = `${Math.round(Number(distanceKm || 0) * 1000)} m`;
 
-  // ===== “오늘 저장 슬롯” 계산 (최대 2개) =====
   const getNextRunNo = async (): Promise<"1" | "2" | null> => {
     if (!userId) return null;
     try {
@@ -603,7 +564,6 @@ export default function Record() {
     }
   };
 
-  // ===== GPS 내부 유틸 =====
   const clearGpsSub = () => {
     if (gpsSubRef.current) {
       gpsSubRef.current.remove();
@@ -626,7 +586,7 @@ export default function Record() {
   const stopAllTracking = () => {
     clearGpsSub();
     clearTimer();
-    runningRef.current = false; // ✅ 스테일 방지
+    runningRef.current = false;
   };
 
   const ensureLocationReady = async (): Promise<boolean> => {
@@ -649,7 +609,6 @@ export default function Record() {
     return true;
   };
 
-  // ===== 자동 저장 (RUN 종료 시 호출) =====
   const saveToServer = async (finalKm: number, finalSec: number, saveType: DistanceType) => {
     if (isGuest) {
       notify("ゲストモード", "ゲストは保存できません。ログインすると保存できます。");
@@ -671,7 +630,7 @@ export default function Record() {
     const url = `${BASE_URL}/RecordServlet?mode=add`;
 
     const form = new URLSearchParams();
-    form.append("date", todayISO); // ✅ 무조건 오늘로 저장
+    form.append("date", todayISO);
     form.append("runNo", String(nextNo));
     form.append("distanceType", saveType);
     form.append("distanceKm", String(finalKm));
@@ -705,7 +664,6 @@ export default function Record() {
     }
   };
 
-  // ✅✅✅ 기록 삭제 (RecordApiServlet로)
   const deleteRunOnServer = async (runId: number) => {
     if (isGuest || !userId) {
       notify("削除不可", "ゲストは削除できません。ログインしてください。");
@@ -739,7 +697,6 @@ export default function Record() {
         return;
       }
 
-      // 캐시 삭제
       const copyRef = { ...splitMapRef.current };
       delete copyRef[runId];
       splitMapRef.current = copyRef;
@@ -751,7 +708,6 @@ export default function Record() {
 
       notify("削除完了", "記録を削除しました。");
 
-      // 화면 갱신
       await loadDayDetail(selectedDate);
       await loadMonthRuns(ymOf(viewY, viewM));
     } catch (e: any) {
@@ -770,7 +726,6 @@ export default function Record() {
     ]);
   };
 
-  // ✅ 자동 종료 + 자동 저장
   const finishRunAndAutoSave = async (reason?: string) => {
     if (finishOnceRef.current) return;
     finishOnceRef.current = true;
@@ -797,7 +752,6 @@ export default function Record() {
     }
   };
 
-  // ===== GPS 측정 시작/재개 =====
   const startOrResumeTracking = async () => {
     if (selectedDate !== todayISO) {
       notify("測定不可", `測定は今日（${todayISO}）のみ可能です。`);
@@ -869,7 +823,7 @@ export default function Record() {
         const acc = typeof accuracy === "number" ? accuracy : null;
 
         const ACC_RUN_MAX = 50;
-        const SPEED_CAP = 7.5; // m/s
+        const SPEED_CAP = 7.5;
         const MIN_MOVE = 0.8;
         const TAU = 3.0;
 
@@ -988,7 +942,6 @@ export default function Record() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ===== 캘린더 =====
   const cells = buildMonthGrid(viewY, viewM);
   const monthTitle = `${viewY}-${String(viewM + 1).padStart(2, "0")}`;
 
@@ -1028,15 +981,12 @@ export default function Record() {
     else if (label === "アカウント") router.push("/Account");
   };
 
-  // ✅✅✅ 오늘 측정 시작: 버튼 누르면 "거리/시간 선택 모달"이 무조건 먼저 뜸
   const openStartFlow = async () => {
-    // ✅ 날짜 상세 모달에서 눌렀을 때 "안 뜨는" 느낌 = 기존 모달이 위에 남아있던 문제
     setDayModalOpen(false);
     setDayDetail(null);
 
     setSelectedDate(todayISO);
 
-    // 로그인일 때 RUN 슬롯 체크
     if (!isGuest && userId) {
       const next = await getNextRunNo();
       if (!next) {
@@ -1045,28 +995,22 @@ export default function Record() {
       }
     }
 
-    // RUN 화면으로 이동 + 초기화
     setStep("RUN");
     cancelAndReset();
 
-    // ✅ 바로 모달 오픈
     setStartModeModalOpen(true);
     setDistanceModalOpen(false);
     setTimeModalOpen(false);
   };
 
-  // ===== 모달 선택 핸들러 (거리/시간만) =====
   const pickMode = (m: GoalMode) => {
     setGoalMode(m);
     goalModeRef.current = m;
 
     setStartModeModalOpen(false);
 
-    if (m === "DISTANCE") {
-      setDistanceModalOpen(true);
-    } else if (m === "TIME") {
-      setTimeModalOpen(true);
-    }
+    if (m === "DISTANCE") setDistanceModalOpen(true);
+    else if (m === "TIME") setTimeModalOpen(true);
   };
 
   const onPickDistanceType = (t: DistanceType) => {
@@ -1122,7 +1066,6 @@ export default function Record() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 14, gap: 12, paddingBottom: TAB_H + 22 }}>
-        {/* ===================== CALENDAR ===================== */}
         {step === "CALENDAR" ? (
           <Card title="カレンダー" ui={ui}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -1151,7 +1094,6 @@ export default function Record() {
           </Card>
         ) : null}
 
-        {/* ===================== RUN ===================== */}
         {step === "RUN" ? (
           <Card title="" ui={ui}>
             <View style={{ marginBottom: 10 }}>
@@ -1219,7 +1161,6 @@ export default function Record() {
         ) : null}
       </ScrollView>
 
-      {/* ===================== ✅ “거리/시간” 모달 ===================== */}
       <Modal visible={startModeModalOpen} transparent animationType="fade" onRequestClose={() => setStartModeModalOpen(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setStartModeModalOpen(false)} />
@@ -1238,7 +1179,6 @@ export default function Record() {
         </View>
       </Modal>
 
-      {/* ===================== ✅ 거리 선택 모달 ===================== */}
       <Modal visible={distanceModalOpen} transparent animationType="fade" onRequestClose={() => setDistanceModalOpen(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setDistanceModalOpen(false)} />
@@ -1269,7 +1209,7 @@ export default function Record() {
                   {
                     borderColor: ui.line,
                     color: ui.text,
-                    backgroundColor: planDistanceType === "CUSTOM" ? ui.card2 : ui.card2,
+                    backgroundColor: ui.card2,
                     opacity: planDistanceType === "CUSTOM" ? 1 : 0.9,
                   },
                 ]}
@@ -1292,7 +1232,6 @@ export default function Record() {
         </View>
       </Modal>
 
-      {/* ===================== ✅ 시간 선택 모달 ===================== */}
       <Modal visible={timeModalOpen} transparent animationType="fade" onRequestClose={() => setTimeModalOpen(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setTimeModalOpen(false)} />
@@ -1344,7 +1283,6 @@ export default function Record() {
         </View>
       </Modal>
 
-      {/* ===================== ✅ 숫자 셀렉트 모달 ===================== */}
       <NumberPickerModal
         open={numPickerOpen}
         title={numPickerTitle}
@@ -1359,7 +1297,6 @@ export default function Record() {
         }}
       />
 
-      {/* ✅ 날짜 상세 모달 */}
       <Modal
         visible={dayModalOpen}
         transparent
@@ -1433,10 +1370,7 @@ export default function Record() {
                             <Pressable
                               hitSlop={HIT_SLOP}
                               onPress={() => confirmDelete(runId)}
-                              style={({ pressed }) => [
-                                styles.deletePill,
-                                { borderColor: ui.danger, opacity: pressed ? 0.7 : 1 },
-                              ]}
+                              style={({ pressed }) => [styles.deletePill, { borderColor: ui.danger, opacity: pressed ? 0.7 : 1 }]}
                             >
                               <Text style={{ color: ui.danger, fontWeight: "900" }}>削除</Text>
                             </Pressable>
@@ -1521,7 +1455,6 @@ export default function Record() {
         </View>
       </Modal>
 
-      {/* ✅ index.tsx 최종본이랑 똑같은 하단 탭 */}
       <View style={[styles.bottomTabs, { borderTopColor: ui.line, backgroundColor: ui.bg }]}>
         <TabBtn label="ホーム" icon="home-outline" active={activeKey === "ホーム"} onPress={() => onTap("ホーム")} ui={ui} />
         <TabBtn label="記録" icon="walk-outline" active={activeKey === "記録"} onPress={() => onTap("記録")} ui={ui} />
@@ -1533,7 +1466,7 @@ export default function Record() {
   );
 }
 
-/* ===================== ✅ 캘린더 ===================== */
+/* UI components */
 
 function RunCalendarGrid({
   ui,
@@ -1590,12 +1523,7 @@ function RunCalendarGrid({
           const burnKcal = Number(sum?.burnKcal ?? sum?.calories ?? 0);
           const hasRun = runKm > 0.0001 || burnKcal > 0.1;
 
-          const borderColor = isSelected
-            ? ui.pillActiveBorderStrong
-            : isToday
-            ? ui.pillActiveBorder
-            : ui.line;
-
+          const borderColor = isSelected ? ui.pillActiveBorderStrong : isToday ? ui.pillActiveBorder : ui.line;
           const bgColor = isSelected ? ui.pillActiveBgStrong : ui.pillIdleBg;
 
           return (
@@ -1624,8 +1552,6 @@ function RunCalendarGrid({
   );
 }
 
-/* ===== small UI ===== */
-
 function Card({ title, children, ui }: any) {
   return (
     <View style={[styles.card, { backgroundColor: ui.card, borderColor: ui.line }]}>
@@ -1638,14 +1564,7 @@ function Card({ title, children, ui }: any) {
 
 function PrimaryBtn({ label, onPress, ui }: any) {
   return (
-    <Pressable
-      hitSlop={HIT_SLOP}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.primaryBtn,
-        { backgroundColor: ui.green, opacity: pressed ? 0.85 : 1 },
-      ]}
-    >
+    <Pressable hitSlop={HIT_SLOP} onPress={onPress} style={({ pressed }) => [styles.primaryBtn, { backgroundColor: ui.green, opacity: pressed ? 0.85 : 1 }]}>
       <Text style={{ color: ui.onGreenText, fontWeight: "900" }}>{label}</Text>
     </Pressable>
   );
@@ -1706,20 +1625,12 @@ function InfoRow({ label, value, ui }: any) {
   );
 }
 
-/** ✅ 셀렉트 박스(드롭다운 느낌) */
 function SelectBox({ label, value, onPress, ui }: any) {
   return (
     <Pressable
       hitSlop={HIT_SLOP}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.selectBox,
-        {
-          borderColor: ui.line,
-          backgroundColor: ui.card2,
-          opacity: pressed ? 0.8 : 1,
-        },
-      ]}
+      style={({ pressed }) => [styles.selectBox, { borderColor: ui.line, backgroundColor: ui.card2, opacity: pressed ? 0.8 : 1 }]}
     >
       <Text style={{ color: ui.muted, fontWeight: "900", fontSize: 12 }}>{label}</Text>
       <View style={{ height: 6 }} />
@@ -1731,7 +1642,6 @@ function SelectBox({ label, value, onPress, ui }: any) {
   );
 }
 
-/** ✅ 숫자 선택 모달 */
 function NumberPickerModal({ open, title, values, selected, onClose, onPick, ui }: any) {
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
@@ -1776,13 +1686,9 @@ function NumberPickerModal({ open, title, values, selected, onClose, onPick, ui 
   );
 }
 
-/* ===== Bottom Tab Button ===== */
-
 function TabBtn({ label, icon, onPress, active, ui }: any) {
   const color = active ? ui.green : ui.text;
-  const pillStyle = active
-    ? { backgroundColor: ui.pillActiveBg, borderColor: ui.pillActiveBorder }
-    : { backgroundColor: ui.pillIdleBg, borderColor: "transparent" };
+  const pillStyle = active ? { backgroundColor: ui.pillActiveBg, borderColor: ui.pillActiveBorder } : { backgroundColor: ui.pillIdleBg, borderColor: "transparent" };
 
   return (
     <Pressable hitSlop={HIT_SLOP} onPress={onPress} style={({ pressed }) => [styles.tabPress, { opacity: pressed ? 0.7 : 1 }]}>
@@ -1793,8 +1699,6 @@ function TabBtn({ label, icon, onPress, active, ui }: any) {
     </Pressable>
   );
 }
-
-/* ===== styles ===== */
 
 const styles = StyleSheet.create({
   header: {

@@ -23,9 +23,6 @@ import {
 const BASE_URL = "http://172.20.10.4:8080/RunFIT_";
 const TOKEN_KEY = "runfit_token";
 
-/* =========================
-   ✅ Index.tsx 전역 테마 버스(토글은 인덱스에서만)
-========================= */
 type ThemeMode = "dark" | "light";
 type ThemeBus = { subs: Set<(m: ThemeMode) => void> };
 
@@ -102,7 +99,7 @@ function useRunFitTheme() {
   return { mode, ui };
 }
 
-/* ===================== Types ===================== */
+
 
 type Category = { id: number; name: string };
 
@@ -122,7 +119,6 @@ type Food = {
 type CategoriesResponse = { categories: Category[] };
 type FoodsResponse = { total: number; foods: any[] };
 
-/* ===================== Helpers ===================== */
 
 function inferUnit(f: Food): "g" | "個" {
   if (f.unit === "g" || f.unit === "個") return f.unit;
@@ -146,10 +142,9 @@ function normalizeFood(x: any): Food {
   };
 }
 
-/* ===================== Screen ===================== */
 
 export default function FoodRecord() {
-  // ✅ 인덱스 토글 따라 자동 반영
+
   const { mode, ui } = useRunFitTheme();
 
   const params = useLocalSearchParams<{ date?: string; ym?: string }>();
@@ -529,7 +524,7 @@ export default function FoodRecord() {
                               </View>
 
                               <Text style={{ color: ui.muted, fontWeight: "800", fontSize: 11, marginTop: 8 }}>
-                                1個 = {base}g（DB基準） → {count}個 = {computedG}g
+                                {/* 1個 = {base}g（DB基準） → {count}個 = {computedG}g */}
                               </Text>
 
                               <View style={{ height: 10 }} />
@@ -541,7 +536,7 @@ export default function FoodRecord() {
                             return (
                               <>
                                 <Text style={{ color: ui.muted, fontWeight: "900" }}>
-                                  栄養（基準 {r.base}g） → 摂取量 {r.g}g に自動換算
+                                  {/* 栄養（基準 {r.base}g） → 摂取量 {r.g}g に自動換算 */}
                                 </Text>
 
                                 <View style={{ height: 10 }} />
@@ -625,7 +620,6 @@ export default function FoodRecord() {
   );
 }
 
-/* ===================== UI bits ===================== */
 
 function BgDecor({ mode, ui }: { mode: "dark" | "light"; ui: any }) {
   if (mode === "light") {
@@ -738,8 +732,6 @@ function FoodBig({ png, jpg, fallback }: { png: string; jpg: string; fallback: s
   );
 }
 
-/* ===================== API ===================== */
-
 async function apiGet<T>(path: string): Promise<T> {
   const token = await AsyncStorage.getItem(TOKEN_KEY);
   const url = `${BASE_URL}${path}`;
@@ -798,8 +790,6 @@ async function safeText(res: Response) {
     return "(no body)";
   }
 }
-
-/* ===================== Styles ===================== */
 
 const styles = StyleSheet.create({
   topbar: {

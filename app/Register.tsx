@@ -1,8 +1,10 @@
+import { Picker } from "@react-native-picker/picker";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -13,20 +15,14 @@ import {
   View,
 } from "react-native";
 
-// ✅ 전역 로그인정보(너 index.tsx랑 동일)
 const setAuthGlobal = (auth: any | null) => {
   (globalThis as any).__RUNFIT_AUTH__ = auth;
 };
 
-// ✅ 앱 전용 알림
 const notify = (title: string, msg: string) => Alert.alert(title, msg);
 
-// ✅ 서버 주소 (index.tsx랑 동일하게)
 const BASE_URL = "http://172.20.10.4:8080/RunFIT_";
 
-/* =========================
-   ✅ 전역 테마 저장소 (index.tsx와 동일 키)
-========================= */
 type ThemeMode = "dark" | "light";
 type ThemeBus = { subs: Set<(m: ThemeMode) => void> };
 
@@ -63,7 +59,7 @@ function subscribeThemeMode(listener: (m: ThemeMode) => void): () => void {
   return () => bus.subs.delete(listener);
 }
 
-// ✅ Register 화면용 컬러셋
+//  Register 화면용 컬러셋
 const DARK_UI = {
   mode: "dark" as const,
   bg: "#0b0f14",
@@ -106,7 +102,6 @@ function useRunFitTheme() {
 
   const ui = useMemo(() => (mode === "dark" ? DARK_UI : LIGHT_UI), [mode]);
 
-  // (필요하면 나중에 버튼 달 때 쓰라고 남겨둠)
   const toggle = () => {
     const cur = getThemeModeGlobal();
     setThemeModeGlobal(cur === "dark" ? "light" : "dark");
@@ -116,9 +111,7 @@ function useRunFitTheme() {
 }
 
 type Ui = ReturnType<typeof useRunFitTheme>["ui"];
-/* ========================= */
 
-// ===== 地方 → 都道府県 맵 (JSP 그대로)
 const PREF_MAP: Record<string, string[]> = {
   北海道: ["北海道"],
   東北: ["青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県"],
@@ -131,7 +124,7 @@ const PREF_MAP: Record<string, string[]> = {
   沖縄: ["沖縄県"],
 };
 
-// ===== helpers
+
 function isYYYYMMDD(s: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s.trim());
 }
@@ -187,10 +180,15 @@ function looksLikeServerError(text: string) {
   );
 }
 
+//  생년월일 Picker 옵션
+const NOW_Y = new Date().getFullYear();
+const YEARS = Array.from({ length: NOW_Y - 1950 + 1 }, (_, i) => String(NOW_Y - i)); // 1950~현재
+const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1));
+const daysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
+
 export default function Register() {
   const { ui } = useRunFitTheme();
 
-  // step: 1(기본) → 2(추가) → 3(목표) → done
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   // ===== Step1
@@ -209,7 +207,42 @@ export default function Register() {
   // ===== Step2
   const [nickname, setNickname] = useState("");
   const [gender, setGender] = useState<"" | "M" | "F">("");
-  const [birthDate, setBirthDate] = useState(""); // YYYY-MM-DD
+
+  //  생년월일: 화면은 셀렉트박스(숫자 크게), 선택은 모달 Picker
+  const [birthY, setBirthY] = useState("1999");
+  const [birthM, setBirthM] = useState("8");
+  const [birthD, setBirthD] = useState("21");
+
+  type BirthFocus = "Y" | "M" | "D";
+  const [birthModalOpen, setBirthModalOpen] = useState(false);
+  const [birthFocus, setBirthFocus] = useState<BirthFocus>("Y"); // (확장용)
+
+  const [tmpBirthY, setTmpBirthY] = useState(birthY);
+  const [tmpBirthM, setTmpBirthM] = useState(birthM);
+  const [tmpBirthD, setTmpBirthD] = useState(birthD);
+
+  const openBirthModal = (focus: BirthFocus) => {
+    setBirthFocus(focus);
+    setTmpBirthY(birthY);
+    setTmpBirthM(birthM);
+    setTmpBirthD(birthD);
+    setBirthModalOpen(true);
+  };
+
+  const closeBirthModal = () => setBirthModalOpen(false);
+
+  const applyBirthModal = () => {
+    const y = Number(tmpBirthY || 2000);
+    const m = Number(tmpBirthM || 1);
+    const maxD = daysInMonth(y, m);
+    const d = Math.min(Number(tmpBirthD || 1), maxD);
+
+    setBirthY(String(tmpBirthY));
+    setBirthM(String(tmpBirthM));
+    setBirthD(String(d));
+    setBirthModalOpen(false);
+  };
+
   const [currentWeight, setCurrentWeight] = useState("");
   const [targetWeight, setTargetWeight] = useState("");
   const [height, setHeight] = useState("");
@@ -235,13 +268,30 @@ export default function Register() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // ===== username check debounce
+  // ===== 
   const timerRef = useRef<any>(null);
   const lastCheckedRef = useRef<string>("");
 
   useEffect(() => {
     setPrefecture("");
   }, [region]);
+
+  //  기본 birthY/M 바뀌면 day 자동 보정
+  useEffect(() => {
+    const y = Number(birthY || 2000);
+    const m = Number(birthM || 1);
+    const maxD = daysInMonth(y, m);
+    if (Number(birthD) > maxD) setBirthD(String(maxD));
+  }, [birthY, birthM]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  //  모달 열려있는 동안 tmp값도 day 자동 보정(선택값이 리스트에 없어서 비는 현상 방지)
+  useEffect(() => {
+    if (!birthModalOpen) return;
+    const y = Number(tmpBirthY || 2000);
+    const m = Number(tmpBirthM || 1);
+    const maxD = daysInMonth(y, m);
+    if (Number(tmpBirthD) > maxD) setTmpBirthD(String(maxD));
+  }, [birthModalOpen, tmpBirthY, tmpBirthM]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const v = username.trim();
@@ -258,7 +308,6 @@ export default function Register() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username]);
 
   const checkUsername = async (v: string) => {
@@ -295,6 +344,12 @@ export default function Register() {
   const addrOk = !!region && !!prefecture;
 
   const step1Ok = pwOk && idOk && addrOk;
+
+  const birthDate = `${birthY.padStart(4, "0")}-${birthM.padStart(2, "0")}-${birthD.padStart(
+    2,
+    "0"
+  )}`;
+
   const step2Ok =
     nickname.trim().length > 0 &&
     (gender === "M" || gender === "F") &&
@@ -305,7 +360,7 @@ export default function Register() {
 
   const step3Ok = goals.length > 0 && !!dailyWalkMin && !!activityLevel;
 
-  // ===== submit handlers
+  
   const submitStep1 = async () => {
     const u = username.trim();
     if (!u || u.length < 3) return notify("入力エラー", "ユーザーIDは3文字以上にして");
@@ -341,7 +396,7 @@ export default function Register() {
 
   const submitStep2 = async () => {
     if (!step2Ok) {
-      notify("入力エラー", "必須項目を全部入力して（生年月日: YYYY-MM-DD）");
+      notify("入力エラー", "必須項目を全部入力して");
       return;
     }
 
@@ -351,7 +406,7 @@ export default function Register() {
       const { text } = await postForm(url, {
         nickname: nickname.trim(),
         gender,
-        birth_date: birthDate.trim(),
+        birth_date: birthDate,
         current_weight: currentWeight.trim(),
         target_weight: targetWeight.trim(),
         height: height.trim(),
@@ -486,10 +541,14 @@ export default function Register() {
                 <Text style={{ color: ui.green, fontWeight: "900", fontSize: 12 }}>使用可能 👍</Text>
               )}
               {username.trim().length >= 3 && available === false && (
-                <Text style={{ color: ui.danger, fontWeight: "900", fontSize: 12 }}>すでに使用中 ❌</Text>
+                <Text style={{ color: ui.danger, fontWeight: "900", fontSize: 12 }}>
+                  すでに使用中 ❌
+                </Text>
               )}
               {username.trim().length > 0 && username.trim().length < 3 && (
-                <Text style={{ color: ui.danger, fontWeight: "900", fontSize: 12 }}>3文字以上入力して</Text>
+                <Text style={{ color: ui.danger, fontWeight: "900", fontSize: 12 }}>
+                  3文字以上入力して
+                </Text>
               )}
             </View>
 
@@ -566,12 +625,22 @@ export default function Register() {
             <View style={{ height: 14 }} />
 
             <Label ui={ui} text="住所（地方）" />
-            <Chips ui={ui} value={region} options={Object.keys(PREF_MAP)} onPick={(v) => setRegion(v)} />
+            <Chips
+              ui={ui}
+              value={region}
+              options={Object.keys(PREF_MAP)}
+              onPick={(v) => setRegion(v)}
+            />
             <View style={{ height: 10 }} />
 
             <Label ui={ui} text="都道府県" />
             {region ? (
-              <Chips ui={ui} value={prefecture} options={prefList} onPick={(v) => setPrefecture(v)} />
+              <Chips
+                ui={ui}
+                value={prefecture}
+                options={prefList}
+                onPick={(v) => setPrefecture(v)}
+              />
             ) : (
               <Text style={{ color: ui.muted, fontWeight: "800", fontSize: 12 }}>
                 まず地方を選択してください
@@ -601,7 +670,7 @@ export default function Register() {
           <View style={[styles.card, { borderColor: ui.line, backgroundColor: ui.card }]}>
             <Text style={[styles.h2, { color: ui.text }]}>ステップ2：追加情報</Text>
             <Text style={{ color: ui.muted, fontSize: 12, fontWeight: "800", marginBottom: 12 }}>
-              生年月日は YYYY-MM-DD で入力（例：1999-08-21）
+              生年月日はセレクトで選択
             </Text>
 
             <Label ui={ui} text="ニックネーム" />
@@ -631,22 +700,116 @@ export default function Register() {
 
             <View style={{ height: 12 }} />
 
-            <Label ui={ui} text="生年月日 (YYYY-MM-DD)" />
-            <TextInput
-              value={birthDate}
-              onChangeText={setBirthDate}
-              placeholder="1999-08-21"
-              placeholderTextColor={ui.placeholder}
-              style={[
-                styles.input,
-                { borderColor: ui.line, color: ui.text, backgroundColor: ui.inputBg },
-              ]}
-            />
-            {!!birthDate && !isYYYYMMDD(birthDate) && (
-              <Text style={{ color: ui.danger, fontWeight: "900", fontSize: 12, marginTop: 6 }}>
-                形式が違う（YYYY-MM-DD）
-              </Text>
-            )}
+            {/*  생년월일 작은 셀렉트박스(숫자 크게) */}
+            <Label ui={ui} text="生年月日" />
+            <View style={{ flexDirection: "row", gap: 10 }}>
+  <SelectBox ui={ui} label="年" value={birthY} flex={1.1} onPress={() => openBirthModal("Y")} />
+  <SelectBox ui={ui} label="月" value={birthM.padStart(2, "0")} flex={1} onPress={() => openBirthModal("M")} />
+  <SelectBox ui={ui} label="日" value={birthD.padStart(2, "0")} flex={1} onPress={() => openBirthModal("D")} />
+</View>
+
+            <Text style={{ color: ui.muted, fontWeight: "800", fontSize: 12, marginTop: 8 }}>
+              選択結果：{birthDate}
+            </Text>
+
+            {/* 모달 Picker */}
+            <Modal
+              visible={birthModalOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={closeBirthModal}
+            >
+              <Pressable style={styles.modalBackdrop} onPress={closeBirthModal} />
+              <View style={[styles.modalCard, { backgroundColor: ui.bg, borderColor: ui.line }]}>
+                <Text style={{ color: ui.text, fontWeight: "900", fontSize: 14, marginBottom: 10 }}>
+                  生年月日を選択
+                </Text>
+
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{ color: ui.muted, fontSize: 11, fontWeight: "900", marginBottom: 6 }}
+                    >
+                      年
+                    </Text>
+                    <View
+                      style={[styles.pickerBox, { borderColor: ui.line, backgroundColor: ui.inputBg }]}
+                    >
+                      <Picker
+                        selectedValue={tmpBirthY}
+                        onValueChange={(v) => setTmpBirthY(String(v))}
+                        dropdownIconColor={ui.text}
+                        style={{ color: ui.text }}
+                        itemStyle={{ color: ui.text, fontSize: 14 }}
+                      >
+                        {YEARS.map((y) => (
+                          <Picker.Item key={y} label={y} value={y} />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{ color: ui.muted, fontSize: 11, fontWeight: "900", marginBottom: 6 }}
+                    >
+                      月
+                    </Text>
+                    <View
+                      style={[styles.pickerBox, { borderColor: ui.line, backgroundColor: ui.inputBg }]}
+                    >
+                      <Picker
+                        selectedValue={tmpBirthM}
+                        onValueChange={(v) => setTmpBirthM(String(v))}
+                        dropdownIconColor={ui.text}
+                        style={{ color: ui.text }}
+                        itemStyle={{ color: ui.text }}
+                      >
+                        {MONTHS.map((m) => (
+                          <Picker.Item key={m} label={String(m).padStart(2, "0")} value={m} />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{ color: ui.muted, fontSize: 11, fontWeight: "900", marginBottom: 6 }}
+                    >
+                      日
+                    </Text>
+                    <View
+                      style={[styles.pickerBox, { borderColor: ui.line, backgroundColor: ui.inputBg }]}
+                    >
+                      <Picker
+                        selectedValue={tmpBirthD}
+                        onValueChange={(v) => setTmpBirthD(String(v))}
+                        dropdownIconColor={ui.text}
+                        style={{ color: ui.text }}
+                        itemStyle={{ color: ui.text }}
+                      >
+                        {Array.from(
+                          { length: daysInMonth(Number(tmpBirthY || 2000), Number(tmpBirthM || 1)) },
+                          (_, i) => String(i + 1)
+                        ).map((d) => (
+                          <Picker.Item key={d} label={String(d).padStart(2, "0")} value={d} />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={{ height: 14 }} />
+
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <GhostBtn ui={ui} label="キャンセル" onPress={closeBirthModal} />
+                  <PrimaryBtn ui={ui} label="決定" onPress={applyBirthModal} />
+                </View>
+
+                {/* (확장용) */}
+                {birthFocus ? <View /> : null}
+              </View>
+            </Modal>
 
             <View style={{ height: 12 }} />
 
@@ -797,7 +960,7 @@ export default function Register() {
 
             <View style={{ height: 8 }} />
             <Text style={{ color: ui.muted, fontSize: 11, fontWeight: "800", lineHeight: 16 }}>
-              ※ 完了後は自動ログインを試みます（/api/auth/login）。
+              ※ 完了後は自動ログインを試みます。
             </Text>
           </View>
         )}
@@ -883,10 +1046,50 @@ function GhostBtn({ ui, label, onPress }: { ui: Ui; label: string; onPress: () =
   );
 }
 
-/**
- * Chips
- * - options: string[] 또는 {key,label}[]
- */
+function SelectBox({
+  ui,
+  label,
+  value,
+  onPress,
+  flex = 1,
+}: {
+  ui: Ui;
+  label: string;
+  value: string;
+  onPress: () => void;
+  flex?: number;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.selectBox,
+        { flex, borderColor: ui.line, backgroundColor: ui.inputBg, opacity: pressed ? 0.85 : 1 },
+      ]}
+    >
+      <Text style={{ color: ui.muted, fontSize: 11, fontWeight: "900" }}>{label}</Text>
+
+      <Text
+  numberOfLines={1}
+  ellipsizeMode="clip"
+  adjustsFontSizeToFit
+  minimumFontScale={0.3}          //  0.7 -> 0.6 정도로 더 여유
+  allowFontScaling={false}         //  추가
+  maxFontSizeMultiplier={1}        //  추가
+  style={{
+    color: ui.text,
+    fontSize: 13,
+    fontWeight: "900",
+    marginTop: 2,
+    includeFontPadding: false,
+  }}
+>
+  {value}
+</Text>
+    </Pressable>
+  );
+}
+
 function Chips({
   ui,
   value,
@@ -969,5 +1172,38 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1,
+  },
+
+  //  생년월일 셀렉트박스 스타일 (숫자 크게 보이게)
+  selectBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+
+  // 모달
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  modalCard: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 24,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 16,
+  },
+
+  //  Picker를 박스 느낌으로 높이 고정
+  pickerBox: {
+    borderWidth: 1,
+    borderRadius: 14,
+    overflow: "hidden",
+    height: 48,
+    justifyContent: "center",
   },
 });

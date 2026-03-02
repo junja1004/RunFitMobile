@@ -18,7 +18,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-// ✅ 전역 로그인정보(간단 유지)
 function setAuthGlobal(auth: any | null) {
   (globalThis as any).__RUNFIT_AUTH__ = auth;
 }
@@ -26,17 +25,12 @@ function getAuthGlobal() {
   return (globalThis as any).__RUNFIT_AUTH__ || null;
 }
 
-// ✅ 앱 전용 알림
 function notify(title: string, msg: string) {
   Alert.alert(title, msg);
 }
 
-// ✅ 하단 탭 크게
 const TAB_H = 96;
 
-/* =========================
-   ✅ 전역 테마 저장소(안전판)
-========================= */
 type ThemeMode = "dark" | "light";
 type ThemeBus = { subs: Set<(m: ThemeMode) => void> };
 
@@ -105,7 +99,6 @@ const LIGHT_UI = {
   topBtnBg: "rgba(15,23,42,0.04)",
 };
 
-// ✅ 홈 사진 섹션은 테마 영향 X (항상 동일하게 유지)
 const PHOTO_UI = DARK_UI;
 
 function useRunFitTheme() {
@@ -125,7 +118,6 @@ function useRunFitTheme() {
 
   return { mode, ui, toggle };
 }
-/* ========================= */
 
 type Btn = { label: string; action: () => void };
 type Section = {
@@ -142,23 +134,20 @@ export default function Index() {
   const pathname = usePathname();
   const { height: winH } = useWindowDimensions();
 
-  // ✅ 전역 테마
   const { mode, ui, toggle } = useRunFitTheme();
 
-  // ✅ auth state
   const initAuth = getAuthGlobal();
   const [token, setToken] = useState(initAuth?.token || "");
   const [nickname, setNickname] = useState(initAuth?.nickname || "");
   const isLoggedIn = !!token;
 
-  // ✅ login inputs
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  // ✅ 로그인 모달
+  
   const [loginOpen, setLoginOpen] = useState(false);
 
-  // ✅ 게스트 모드
+  
   const APP_GUEST_MODE = true;
 
   function onTap(label: string) {
@@ -265,15 +254,15 @@ export default function Index() {
     <SafeAreaView style={[styles.safe, { backgroundColor: ui.bg }]}>
       <StatusBar barStyle={mode === "dark" ? "light-content" : "dark-content"} />
 
-      {/* TOP BAR */}
+      {/* 탑바 2222 */}
       <View style={[styles.topbar, { borderBottomColor: ui.line }]}>
-        {/* LEFT: 프로필 + 토글 */}
+        {/* 프로필 토글 222*/}
         <View style={styles.profileRow}>
           <View style={[styles.avatar, { borderColor: ui.line, backgroundColor: ui.topBtnBg }]}>
             <View style={[styles.avatarDot, { backgroundColor: ui.green }]} />
           </View>
 
-          {/* ✅ THEME TOGGLE (프로필 옆) */}
+          {/*  테마토글 ㅇㅋ22222 */}
           <Pressable
             onPress={toggle}
             hitSlop={10}
@@ -324,7 +313,7 @@ export default function Index() {
           </View>
         </View>
 
-        {/* RIGHT: 브랜드 + 로그아웃 */}
+        {/* RIGHT: 브랜드 + 로그아웃 시발 이것도 오류 */}
         <View style={styles.topRight}>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={[styles.brand, { color: ui.text }]}>RunFit</Text>
@@ -353,7 +342,7 @@ export default function Index() {
         </View>
       )}
 
-      {/* ✅ CONTENT: 사진 섹션은 PHOTO_UI로 고정(테마 영향 X) */}
+      {/*  CONTENT: 사진 섹션은 PHOTO_UI로 고정(테마 영향 X) */}
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: TAB_H + 18 }]}
         showsVerticalScrollIndicator={false}
@@ -371,7 +360,7 @@ export default function Index() {
           />
         ))}
 
-        {/* 아래 여백/푸터는 테마 영향 OK */}
+        {/* 아래 여백/푸터는 테마 영향 OK 시바 오류 존나게뜸 여기  */}
         <View style={[styles.endBlock, { backgroundColor: ui.bg }]}>
           <Text style={{ color: ui.muted, fontWeight: "800", fontSize: 11, textAlign: "center" }}>
             RunFit Mobile Demo · Expo Go
@@ -379,7 +368,7 @@ export default function Index() {
         </View>
       </ScrollView>
 
-      {/* ✅ BOTTOM TABS */}
+      {/*  BOTTOM TABS */}
       <View style={[styles.bottomTabs, { borderTopColor: ui.line, backgroundColor: ui.bg }]}>
         <TabBtn label="ホーム" icon="home-outline" active={activeKey === "ホーム"} onPress={() => onTap("ホーム")} ui={ui} />
         <TabBtn label="記録" icon="walk-outline" active={activeKey === "記録"} onPress={() => onTap("記録")} ui={ui} />
@@ -437,7 +426,6 @@ export default function Index() {
   );
 }
 
-/* ===== section ===== */
 
 function PhotoSection(props: {
   image: ImageSourcePropType;
@@ -446,7 +434,7 @@ function PhotoSection(props: {
   subline: string;
   primary: Btn;
   secondary: Btn;
-  ui: any; // ✅ PHOTO_UI가 들어옴(항상 동일)
+  ui: any; 
 }) {
   const { image, height, headline, subline, primary, secondary, ui } = props;
 
@@ -490,7 +478,7 @@ function PhotoGhostBtn({ label, onPress, ui }: any) {
         styles.photoGhostBtn,
         {
           borderColor: ui.line,
-          backgroundColor: "rgba(10,14,18,0.35)", // ✅ 사진 버튼 느낌도 고정
+          backgroundColor: "rgba(10,14,18,0.35)", 
           opacity: pressed ? 0.85 : 1,
         },
       ]}
@@ -515,8 +503,6 @@ function TabBtn({ label, icon, onPress, active, ui }: any) {
     </Pressable>
   );
 }
-
-/* ===== styles ===== */
 
 const styles = StyleSheet.create({
   safe: { flex: 1, paddingTop: Platform.OS === "android" ? 6 : 0 },

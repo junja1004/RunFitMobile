@@ -32,9 +32,7 @@ const notify = (title: string, msg: string) => {
   }
 };
 
-/* =========================
-   ✅ Index.tsx와 동일한 전역 테마 저장소(버스)
-========================= */
+
 type ThemeMode = "dark" | "light";
 type ThemeBus = { subs: Set<(m: ThemeMode) => void> };
 
@@ -133,7 +131,7 @@ function useRunFitTheme() {
 type AccountMe = {
   id: number;
   username: string;
-  nickname: string | null; // ✅ 추가
+  nickname: string | null; 
   email: string | null;
   phone: string | null;
   region: string | null;
@@ -244,7 +242,7 @@ function SelectModal({
 }
 
 export default function Account() {
-  // ✅ 전역 테마 (Index.tsx 토글과 연동)
+  
   const { mode, ui, toggle } = useRunFitTheme();
 
   const [tab, setTab] = useState<"account" | "delete">("account");
@@ -497,7 +495,7 @@ export default function Account() {
 
             <View style={{ height: 12 }} />
 
-            {/* ✅ 닉네임 표시: nickname 우선 */}
+            {/*  닉네임 표시: nickname 우선 */}
             <Field label="ニックネーム(表示名)" ui={ui}>
               <TextInput
                 style={[styles.input, { borderColor: ui.line, color: ui.text, backgroundColor: ui.inputBg }]}

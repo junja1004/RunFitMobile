@@ -14,18 +14,13 @@ import {
   Text,
   TextInput,
   View,
-  useWindowDimensions,
+  useWindowDimensions
 } from "react-native";
 
-// ✅ Map (Expo: react-native-maps)
 import MapView, { Marker, Polyline } from "react-native-maps";
 
-/** 전역 로그인정보 */
 const getAuthGlobal = () => (globalThis as any).__RUNFIT_AUTH__ || null;
 
-/* =========================
-   ✅ 전역 테마 저장소(Index.tsx와 동일 키 사용)
-========================= */
 type ThemeMode = "dark" | "light";
 type ThemeBus = { subs: Set<(m: ThemeMode) => void> };
 
@@ -60,7 +55,6 @@ function useRunFitThemeMode() {
 
   return { mode };
 }
-/* ========================= */
 
 type DistanceType = "3K" | "5K" | "10K" | "HALF" | "CUSTOM";
 type GoalMode = "DISTANCE" | "TIME" | "FREE";
@@ -75,7 +69,6 @@ type Profile = {
   heightCm: number | null;
 };
 
-/** ✅ 캘린더 초록불용 월 요약 타입 */
 type MonthRunItem = {
   runKm?: number;
   distanceKm?: number;
@@ -93,11 +86,10 @@ type MonthRunResponse = {
   dates?: string[];
 };
 
-// ✅ day 상세 + splits 연동용 타입
 type SplitItem = { km: number; m: number; sec: number };
 
 type DayRunItem = {
-  runId?: number; // ✅ run_record.id
+  runId?: number;
   runNo?: string;
   distanceType?: string;
   distanceKm: number;
@@ -115,9 +107,10 @@ type DayDetailResponse = {
   items: DayRunItem[];
 };
 
-// ✅✅✅ MAP/ROUTE용 타입
-type RoutePoint = { latitude: number; longitude: number; t: number }; // t=러닝 경과초(일시정지 제외)
+type RoutePoint = { latitude: number; longitude: number; t: number };
 type FinishSplit = { km: number; sec: number; m: number };
+
+type ServerRoutePoint = { seq: number; lat: number; lon: number; t: number };
 
 const notify = (title: string, msg: string) => {
   if (Platform.OS === "web") (globalThis as any).alert?.(`${title}\n\n${msg}`);
@@ -175,7 +168,6 @@ function secToMmss(totalSec: number) {
   return `${mm}:${ss}`;
 }
 
-/** 하버사인 */
 function toRad(v: number) {
   return (v * Math.PI) / 180;
 }
@@ -194,14 +186,13 @@ function haversineMeters(aLat: number, aLon: number, bLat: number, bLon: number)
   return R * c;
 }
 
-/** ✅✅✅ 1km 스플릿 계산(경계 통과 시 보간) */
 function computeKmSplits(points: RoutePoint[]): FinishSplit[] {
   if (!points || points.length < 2) return [];
   const out: FinishSplit[] = [];
 
-  let cumDist = 0; // 누적거리(m)
-  let lastBoundaryTime = points[0].t; // 마지막 km 경계 시간
-  let nextKmBoundary = 1000; // 다음 km 경계(m)
+  let cumDist = 0;
+  let lastBoundaryTime = points[0].t;
+  let nextKmBoundary = 1000;
 
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1];
@@ -233,10 +224,9 @@ function computeKmSplits(points: RoutePoint[]): FinishSplit[] {
   return out;
 }
 
-/** 월 캘린더 (월요일 시작) */
 function buildMonthGrid(year: number, month0: number) {
   const first = new Date(year, month0, 1);
-  const firstDow = first.getDay(); // 0=Sun
+  const firstDow = first.getDay();
   const monStart = (firstDow + 6) % 7;
 
   const start = new Date(year, month0, 1);
@@ -250,12 +240,8 @@ function buildMonthGrid(year: number, month0: number) {
   return cells;
 }
 
-// ✅ 하단 탭 크게 (index.tsx와 동일)
 const TAB_H = 96;
 
-/* =========================
-   ✅ Drill(웹쪽 플랜) 데이터
-========================= */
 type PlanKey = "5K" | "10K" | "HALF";
 const PLAN_KEYS: PlanKey[] = ["5K", "10K", "HALF"];
 const DOW_LABELS = ["月", "火", "水", "木", "金", "土", "日"] as const;
@@ -305,7 +291,6 @@ const PLAN_DATA: Record<PlanKey, PlanDef> = {
   },
 };
 
-// ✅ 앱 내부 저장(서버 API 없을 때도 표시되게)
 const PLAN_GLOBAL_KEY = "__RUNFIT_SELECTED_PLAN__";
 function isPlanKey(v: any): v is PlanKey {
   return v === "5K" || v === "10K" || v === "HALF";
@@ -320,27 +305,22 @@ function setPlanGlobal(k: PlanKey | null) {
   g[PLAN_GLOBAL_KEY] = k;
 }
 
-// ✅ 오늘 요일 index (월=0..일=6)
 function getTodayDowIndexMon(): number {
   const d = new Date();
   return (d.getDay() + 6) % 7;
 }
-
-/* ========================= */
 
 type PlanModalStep = "MODE" | "DISTANCE" | "TIME" | "PLAN" | "PICK_H" | "PICK_M" | "PICK_S";
 
 export default function Record() {
   const pathname = usePathname();
 
-  // ✅ Index 토글과 동일한 전역 테마 사용
   const { mode } = useRunFitThemeMode();
   const isLight = mode === "light";
 
   const ui = useMemo(() => {
     if (isLight) {
       return {
-        // ✅ LIGHT
         bg: "#f6f8fb",
         card: "#ffffff",
         headerBg: "rgba(255,255,255,0.88)",
@@ -370,7 +350,6 @@ export default function Record() {
     }
 
     return {
-      // ✅ DARK (기존 느낌 유지)
       bg: "#0b0f14",
       card: "#0f1620",
       headerBg: "rgba(255,255,255,0.02)",
@@ -405,74 +384,57 @@ export default function Record() {
   const userId: number | null = auth?.userId ?? null;
   const isGuest = !userId;
 
-  // ✅ 오늘(세션 기준): 측정/저장은 무조건 이 날짜로만
   const todayISO = useMemo(() => getToday(), []);
-
-  // ✅ 오늘 요일/드릴
   const todayDowIdx = useMemo(() => getTodayDowIndexMon(), []);
   const todayDowLabel = DOW_LABELS[todayDowIdx];
 
-  // ===== UI Step =====
   const [step, setStep] = useState<UiStep>("CALENDAR");
 
-  // ===== 날짜 선택(보기용) =====
   const [selectedDate, setSelectedDate] = useState(todayISO);
   const init = new Date();
   const [viewY, setViewY] = useState(init.getFullYear());
   const [viewM, setViewM] = useState(init.getMonth());
 
-  // ✅ 월 캘린더 초록불 데이터
   const [monthRuns, setMonthRuns] = useState<Record<string, MonthRunItem>>({});
   const [loadingMonthRuns, setLoadingMonthRuns] = useState(false);
 
-  // ✅ 날짜 터치 -> day 상세 모달 (열람)
   const [dayModalOpen, setDayModalOpen] = useState(false);
 
-  // ✅ day 상세 + splits 캐시
   const [dayDetail, setDayDetail] = useState<DayDetailResponse | null>(null);
   const [loadingDay, setLoadingDay] = useState(false);
 
   const [splitMap, setSplitMap] = useState<Record<number, SplitItem[]>>({});
   const splitMapRef = useRef<Record<number, SplitItem[]>>({});
 
-  // ===== ✅ 플랜 설정 모달(단일 Modal로 통합) =====
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [planStep, setPlanStep] = useState<PlanModalStep>("MODE");
 
-  // ===== 플랜 선택(거리/시간/자유) =====
   const [goalMode, setGoalMode] = useState<GoalMode>("DISTANCE");
 
   const [planDistanceType, setPlanDistanceType] = useState<DistanceType>("5K");
   const [targetKmText, setTargetKmText] = useState<string>("5.00");
 
-  // 시간 목표(셀렉트)
   const [pickH, setPickH] = useState(0);
   const [pickM, setPickM] = useState(30);
   const [pickS, setPickS] = useState(0);
   const [targetTimeText, setTargetTimeText] = useState<string>("00:30:00");
 
-  // ===== ✅ Drill Plan (웹쪽) 선택/표시 =====
   const [selectedPlanKey, setSelectedPlanKey] = useState<PlanKey | null>(() => getPlanGlobal());
   const [planDraftKey, setPlanDraftKey] = useState<PlanKey>(() => getPlanGlobal() ?? "5K");
   const [rpeOpen, setRpeOpen] = useState(false);
 
-  // ===== 기록 입력(메모) =====
   const [memo, setMemo] = useState<string>("");
 
-  // ===== 저장용 타입/결과 =====
-  const [distanceType, setDistanceType] = useState<DistanceType>("CUSTOM"); // 저장용 타입
-  const [distanceKm, setDistanceKm] = useState<string>("0.00"); // 실제 측정 누적
+  const [distanceType, setDistanceType] = useState<DistanceType>("CUSTOM");
+  const [distanceKm, setDistanceKm] = useState<string>("0.00");
   const [timeHms, setTimeHms] = useState<string>("00:00:00");
 
-  // 프로필/칼로리
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileHint, setProfileHint] = useState<string>(isGuest ? "ゲストモード：保存不可" : "プロフィール読み込み中...");
   const [calories, setCalories] = useState<number | null>(null);
 
-  // ✅ 로그창 제거 요청 → UI 표시 안 함 (디버그 값은 남겨둠)
   const [resultText, setResultText] = useState<string>("");
 
-  // ===== ✅✅✅ Map 결과(종료 후 표시) =====
   const mapRef = useRef<MapView | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
@@ -480,13 +442,20 @@ export default function Record() {
   const [routeLine, setRouteLine] = useState<{ latitude: number; longitude: number }[]>([]);
   const [finishSplits, setFinishSplits] = useState<FinishSplit[]>([]);
 
-  // ===== GPS 측정 =====
+  const [routeModalOpen, setRouteModalOpen] = useState(false);
+  const [routeModalRunId, setRouteModalRunId] = useState<number | null>(null);
+  const [routeModalLoading, setRouteModalLoading] = useState(false);
+  const [routeModalLine, setRouteModalLine] = useState<{ latitude: number; longitude: number }[]>([]);
+  const [routeModalSplits, setRouteModalSplits] = useState<SplitItem[]>([]);
+  const routeModalMapRef = useRef<MapView | null>(null);
+  const [routeModalMapReady, setRouteModalMapReady] = useState(false);
+
   const [runState, setRunState] = useState<RunState>("IDLE");
-  const [gpsHint, setGpsHint] = useState<string>(""); // ✅ UI에서는 안 보여줌(요구사항)
+  const [gpsHint, setGpsHint] = useState<string>("");
 
   const gpsSubRef = useRef<Location.LocationSubscription | null>(null);
-  const startMsRef = useRef<number>(0); // 세그먼트 시작 시각
-  const accMsRef = useRef<number>(0); // 누적(일시정지 포함)
+  const startMsRef = useRef<number>(0);
+  const accMsRef = useRef<number>(0);
   const elapsedSecRef = useRef<number>(0);
 
   const metersRef = useRef<number>(0);
@@ -500,26 +469,20 @@ export default function Record() {
   const lastSpeedRef = useRef<number | null>(null);
   const lockCountRef = useRef<number>(0);
 
-  // ✅ “목표 자동 종료” 최신값 ref
   const goalModeRef = useRef<GoalMode>("DISTANCE");
   const targetKmRef = useRef<number | null>(5.0);
   const targetSecRef = useRef<number | null>(1800);
 
-  useEffect(() => {
-    goalModeRef.current = goalMode;
-  }, [goalMode]);
-
+  useEffect(() => { goalModeRef.current = goalMode; }, [goalMode]);
   useEffect(() => {
     const km = Number(targetKmText);
     targetKmRef.current = Number.isFinite(km) && km > 0 ? km : null;
   }, [targetKmText]);
-
   useEffect(() => {
     const sec = hmsToSeconds(targetTimeText);
     targetSecRef.current = sec != null && sec > 0 ? sec : null;
   }, [targetTimeText]);
 
-  /** ✅ 서버에서 selected_plan 읽기 (있으면) */
   const loadSelectedPlanFromServer = async () => {
     if (!userId) return;
     try {
@@ -527,9 +490,7 @@ export default function Record() {
       const res = await fetch(url, { method: "GET", headers: { "X-USER-ID": String(userId) } });
       const text = await res.text();
       let data: any = null;
-      try {
-        data = JSON.parse(text);
-      } catch {}
+      try { data = JSON.parse(text); } catch {}
 
       const k = data?.selectedPlan ?? data?.planKey ?? data?.selected_plan ?? null;
       const kk = typeof k === "string" ? k.trim().toUpperCase() : "";
@@ -538,12 +499,9 @@ export default function Record() {
         setPlanDraftKey(kk);
         setPlanGlobal(kk);
       }
-    } catch {
-      // ✅ API 없거나 실패하면 그냥 로컬 표시만
-    }
+    } catch {}
   };
 
-  /** ✅ 서버에 selected_plan 저장 (있으면) */
   const applyPlanToServer = async (k: PlanKey) => {
     if (!userId) return;
     try {
@@ -557,23 +515,18 @@ export default function Record() {
         body: form.toString(),
       });
 
-      // 실패해도 앱은 계속 동작하게
       if (!res.ok) {
         const t = await res.text();
         notify("保存注意", `サーバ保存に失敗（表示は変更済み）\n${t}`);
       }
-    } catch {
-      // API 없으면 무시
-    }
+    } catch {}
   };
 
   useEffect(() => {
     if (!userId) return;
     loadSelectedPlanFromServer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  /** ✅ 월별 런닝 기록 날짜 가져오기 (캘린더 초록불) */
   const loadMonthRuns = async (ym: string) => {
     if (!userId) {
       setMonthRuns({});
@@ -586,11 +539,7 @@ export default function Record() {
 
       const text = await res.text();
       let data: MonthRunResponse | any = null;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = null;
-      }
+      try { data = JSON.parse(text); } catch { data = null; }
 
       if (!res.ok) {
         setMonthRuns({});
@@ -624,10 +573,9 @@ export default function Record() {
     }
   };
 
-  // ✅ runId로 splits 가져오기
   const loadSplitsByRunId = async (runId: number) => {
     if (!userId) return;
-    if (splitMapRef.current[runId]) return; // ✅ 캐시 있으면 끝
+    if (splitMapRef.current[runId]) return;
 
     try {
       const url = `${BASE_URL}/api/record/add?mode=splits&runId=${encodeURIComponent(String(runId))}`;
@@ -636,9 +584,7 @@ export default function Record() {
       const text = await res.text();
 
       let data: any = null;
-      try {
-        data = JSON.parse(text);
-      } catch {}
+      try { data = JSON.parse(text); } catch {}
 
       const splits: SplitItem[] = res.ok && data?.ok && Array.isArray(data?.splits) ? data.splits : [];
 
@@ -650,7 +596,6 @@ export default function Record() {
     }
   };
 
-  // ✅ day 상세 로드: /api/record/add?mode=day
   const loadDayDetail = async (dateISO: string) => {
     if (!userId) {
       setDayDetail(null);
@@ -663,9 +608,7 @@ export default function Record() {
       const text = await res.text();
 
       let data: any = null;
-      try {
-        data = JSON.parse(text);
-      } catch {}
+      try { data = JSON.parse(text); } catch {}
 
       if (!res.ok || !data?.ok) {
         setDayDetail(null);
@@ -674,7 +617,6 @@ export default function Record() {
 
       setDayDetail(data as DayDetailResponse);
 
-      // ✅ runId 있으면 splits 미리 로드
       const items: DayRunItem[] = Array.isArray(data.items) ? data.items : [];
       items.forEach((it) => {
         if (it.runId) loadSplitsByRunId(it.runId);
@@ -692,10 +634,8 @@ export default function Record() {
       return;
     }
     loadMonthRuns(ymOf(viewY, viewM));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewY, viewM, userId]);
 
-  /** 프로필 로드 (로그인일 때만) */
   const loadProfile = async () => {
     if (!userId) return;
 
@@ -704,9 +644,7 @@ export default function Record() {
       const res = await fetch(url, { method: "GET", headers: { "X-USER-ID": String(userId) } });
       const text = await res.text();
       let data: any = null;
-      try {
-        data = JSON.parse(text);
-      } catch {}
+      try { data = JSON.parse(text); } catch {}
 
       if (!res.ok || !data?.ok) {
         setProfile(null);
@@ -738,10 +676,8 @@ export default function Record() {
       return;
     }
     loadProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // calories 계산(필요하면 나중에)
   useEffect(() => {
     const km = Number(distanceKm);
     const sec = hmsToSeconds(timeHms);
@@ -752,12 +688,10 @@ export default function Record() {
     setCalories(null);
   }, [distanceKm, timeHms, profile]);
 
-  // ✅ RUN 들어가면 날짜는 무조건 오늘로 고정
   useEffect(() => {
     if (step === "RUN" && selectedDate !== todayISO) setSelectedDate(todayISO);
   }, [step, selectedDate, todayISO]);
 
-  // ===== 선택일(모달/요약) 계산 =====
   const picked = monthRuns[selectedDate];
 
   const pickedKm = Number(picked?.distanceKm ?? picked?.runKm ?? 0);
@@ -775,7 +709,6 @@ export default function Record() {
 
   const metersText = `${Math.round(Number(distanceKm || 0) * 1000)} m`;
 
-  // ===== “오늘 저장 슬롯” 계산 (최대 2개) =====
   const getNextRunNo = async (): Promise<"1" | "2" | null> => {
     if (!userId) return null;
     try {
@@ -783,9 +716,7 @@ export default function Record() {
       const res = await fetch(url, { method: "GET", headers: { "X-USER-ID": String(userId) } });
       const text = await res.text();
       let data: any = null;
-      try {
-        data = JSON.parse(text);
-      } catch {}
+      try { data = JSON.parse(text); } catch {}
 
       const items: any[] = Array.isArray(data?.items) ? data.items : [];
       const used = new Set<string>();
@@ -801,7 +732,6 @@ export default function Record() {
     }
   };
 
-  // ===== GPS 내부 유틸 =====
   const clearGpsSub = () => {
     if (gpsSubRef.current) {
       gpsSubRef.current.remove();
@@ -824,7 +754,7 @@ export default function Record() {
   const stopAllTracking = () => {
     clearGpsSub();
     clearTimer();
-    runningRef.current = false; // ✅ 스테일 방지
+    runningRef.current = false;
   };
 
   const ensureLocationReady = async (): Promise<boolean> => {
@@ -847,7 +777,64 @@ export default function Record() {
     return true;
   };
 
-  // ===== 자동 저장 (RUN 종료 시 호출) =====
+  const findRunIdByTodayAndRunNo = async (runNoStr: string): Promise<number | null> => {
+    if (!userId) return null;
+    try {
+      const url = `${BASE_URL}/api/record/add?mode=day&date=${encodeURIComponent(todayISO)}`;
+      const res = await fetch(url, { method: "GET", headers: { "X-USER-ID": String(userId) } });
+      const text = await res.text();
+      let data: any = null;
+      try { data = JSON.parse(text); } catch {}
+      const items: any[] = Array.isArray(data?.items) ? data.items : [];
+      const hit = items.find((it) => String(it?.runNo ?? "") === String(runNoStr));
+      const rid = hit?.runId;
+      if (typeof rid === "number" && rid > 0) return rid;
+      if (rid != null) {
+        const n = Number(rid);
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const saveRouteToServer = async (runId: number, points: RoutePoint[]) => {
+    if (!userId || !runId || runId <= 0) return;
+    if (!points || points.length < 2) return;
+
+    try {
+      const url = `${BASE_URL}/api/record/add?mode=route_save`;
+
+      const payload = points.map((p, idx) => ({
+        seq: idx + 1,
+        lat: p.latitude,
+        lon: p.longitude,
+        t: Math.max(0, Math.floor(p.t)),
+      }));
+
+      const form = new URLSearchParams();
+      form.append("runId", String(runId));
+      form.append("pointsJson", JSON.stringify(payload));
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "X-USER-ID": String(userId),
+        },
+        body: form.toString(),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        console.log("route_save failed", res.status, t);
+      }
+    } catch (e) {
+      console.log("route_save error", e);
+    }
+  };
+
   const saveToServer = async (finalKm: number, finalSec: number, saveType: DistanceType) => {
     if (isGuest) {
       notify("ゲストモード", "ゲストは保存できません。ログインすると保存できます。");
@@ -869,7 +856,7 @@ export default function Record() {
     const url = `${BASE_URL}/RecordServlet?mode=add`;
 
     const form = new URLSearchParams();
-    form.append("date", todayISO); // ✅ 무조건 오늘로 저장
+    form.append("date", todayISO);
     form.append("runNo", String(nextNo));
     form.append("distanceType", saveType);
     form.append("distanceKm", String(finalKm));
@@ -877,8 +864,6 @@ export default function Record() {
     form.append("durationMin", String(durationMinCompat));
     form.append("calories", String(calories ?? 0));
     form.append("memo", memo ?? "");
-
-    // ✅ (옵션) 서버가 지원하면 여기서 route/splits도 같이 보내면 됨 (현재는 서버 스펙 미확정이라 미전송)
 
     try {
       const res = await fetch(url, {
@@ -897,6 +882,11 @@ export default function Record() {
       else {
         notify("保存完了", `記録を保存しました。（RUN ${nextNo}）`);
         loadMonthRuns(ymOf(viewY, viewM));
+
+        const runId = await findRunIdByTodayAndRunNo(String(nextNo));
+        if (runId) {
+          await saveRouteToServer(runId, routeRef.current);
+        }
       }
     } catch (e: any) {
       const msg = String(e?.message || e);
@@ -905,7 +895,6 @@ export default function Record() {
     }
   };
 
-  // ✅✅✅ 기록 삭제 (RecordServlet X → RecordApiServlet로)
   const deleteRunOnServer = async (runId: number) => {
     if (isGuest || !userId) {
       notify("削除不可", "ゲストは削除できません。ログインしてください。");
@@ -930,16 +919,13 @@ export default function Record() {
       const text = await res.text();
 
       let data: any = null;
-      try {
-        data = JSON.parse(text);
-      } catch {}
+      try { data = JSON.parse(text); } catch {}
 
       if (!res.ok || !data?.ok) {
         notify("削除失敗", data?.message || text || `HTTP ${res.status}`);
         return;
       }
 
-      // 캐시 삭제
       const copyRef = { ...splitMapRef.current };
       delete copyRef[runId];
       splitMapRef.current = copyRef;
@@ -951,7 +937,6 @@ export default function Record() {
 
       notify("削除完了", "記録を削除しました。");
 
-      // 화면 갱신
       await loadDayDetail(selectedDate);
       await loadMonthRuns(ymOf(viewY, viewM));
     } catch (e: any) {
@@ -962,15 +947,75 @@ export default function Record() {
   const confirmDelete = (runId: number) => {
     Alert.alert("削除", "この記録を削除しますか？", [
       { text: "キャンセル", style: "cancel" },
-      {
-        text: "削除",
-        style: "destructive",
-        onPress: () => deleteRunOnServer(runId),
-      },
+      { text: "削除", style: "destructive", onPress: () => deleteRunOnServer(runId) },
     ]);
   };
 
-  // ✅ 자동 종료 + 자동 저장 (시간 0 스테일 문제 해결)
+  const openRouteModal = async (runId: number) => {
+    if (isGuest || !userId) {
+      notify("閲覧不可", "ログインしてください。");
+      return;
+    }
+    setRouteModalOpen(true);
+    setRouteModalRunId(runId);
+    setRouteModalLoading(true);
+    setRouteModalLine([]);
+    setRouteModalMapReady(false);
+
+    const cached = splitMapRef.current[runId];
+    if (cached) setRouteModalSplits(cached);
+    else setRouteModalSplits([]);
+
+    try {
+      await loadSplitsByRunId(runId);
+      const latest = splitMapRef.current[runId];
+      if (latest) setRouteModalSplits(latest);
+
+      const url = `${BASE_URL}/api/record/add?mode=route&runId=${encodeURIComponent(String(runId))}`;
+      const res = await fetch(url, { method: "GET", headers: { "X-USER-ID": String(userId) } });
+      const text = await res.text();
+
+      let data: any = null;
+      try { data = JSON.parse(text); } catch {}
+
+      const pts: ServerRoutePoint[] = res.ok && data?.ok && Array.isArray(data?.points) ? data.points : [];
+      const line = pts
+        .map((p) => ({ latitude: Number(p.lat), longitude: Number(p.lon) }))
+        .filter((p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude));
+
+      setRouteModalLine(line);
+    } catch (e: any) {
+      notify("読み込み失敗", String(e?.message || e));
+      setRouteModalLine([]);
+    } finally {
+      setRouteModalLoading(false);
+    }
+  };
+
+  const closeRouteModal = () => {
+    setRouteModalOpen(false);
+    setRouteModalRunId(null);
+    setRouteModalLine([]);
+    setRouteModalSplits([]);
+    setRouteModalLoading(false);
+    setRouteModalMapReady(false);
+  };
+
+  useEffect(() => {
+    if (!routeModalOpen) return;
+    if (Platform.OS === "web") return;
+    if (!routeModalMapReady) return;
+    if (!routeModalMapRef.current) return;
+    if (!routeModalLine || routeModalLine.length < 2) return;
+
+    try {
+      routeModalMapRef.current.fitToCoordinates(routeModalLine, {
+        edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+        animated: true,
+      });
+    } catch {}
+  }, [routeModalOpen, routeModalMapReady, routeModalLine]);
+
   const finishRunAndAutoSave = async (reason?: string) => {
     if (finishOnceRef.current) return;
     finishOnceRef.current = true;
@@ -990,12 +1035,11 @@ export default function Record() {
     const finalKm = metersRef.current / 1000;
     setDistanceKm(finalKm.toFixed(2));
 
-    // ✅✅✅ 종료 결과: 지도 라인 + 스플릿 계산
     const pts = routeRef.current;
     const line = pts.map((p) => ({ latitude: p.latitude, longitude: p.longitude }));
     setRouteLine(line);
     setFinishSplits(computeKmSplits(pts));
-    setMapReady(false); // 레이아웃 다시 타고 fit하도록
+    setMapReady(false);
 
     if (!isGuest && userId) {
       await saveToServer(finalKm, finalSec, distanceType);
@@ -1004,7 +1048,6 @@ export default function Record() {
     }
   };
 
-  // ===== GPS 측정 시작/재개 =====
   const startOrResumeTracking = async () => {
     if (selectedDate !== todayISO) {
       notify("測定不可", `測定は今日（${todayISO}）のみ可能です。`);
@@ -1033,7 +1076,6 @@ export default function Record() {
       resetLockState();
       setMemo("");
 
-      // ✅✅✅ 새 러닝: route/splits 초기화
       routeRef.current = [];
       setRouteLine([]);
       setFinishSplits([]);
@@ -1067,7 +1109,7 @@ export default function Record() {
       }
     }, 250);
 
-    clearGpsSub();
+    gpsSubRef.current?.remove();
     gpsSubRef.current = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.BestForNavigation,
@@ -1082,7 +1124,7 @@ export default function Record() {
         const acc = typeof accuracy === "number" ? accuracy : null;
 
         const ACC_RUN_MAX = 50;
-        const SPEED_CAP = 7.5; // m/s
+        const SPEED_CAP = 7.5;
         const MIN_MOVE = 0.8;
         const TAU = 3.0;
 
@@ -1096,9 +1138,7 @@ export default function Record() {
               lastGoodRef.current = { lat: latitude, lon: longitude, ts, acc };
               lastSmoothRef.current = { lat: latitude, lon: longitude, ts };
 
-              // ✅✅✅ 첫 포인트도 route에 넣어두기(러닝시간 t 포함)
-              const t =
-                (accMsRef.current + Math.max(0, Date.now() - startMsRef.current)) / 1000;
+              const t = (accMsRef.current + Math.max(0, Date.now() - startMsRef.current)) / 1000;
               routeRef.current.push({ latitude, longitude, t });
             }
           } else {
@@ -1157,15 +1197,12 @@ export default function Record() {
         const kmNow = metersRef.current / 1000;
         setDistanceKm(kmNow.toFixed(2));
 
-        // ✅✅✅ route 포인트 누적(스무딩 좌표 + 러닝경과시간 t)
-        const t =
-          (accMsRef.current + Math.max(0, Date.now() - startMsRef.current)) / 1000;
+        const t = (accMsRef.current + Math.max(0, Date.now() - startMsRef.current)) / 1000;
 
         const last = routeRef.current[routeRef.current.length - 1];
         if (!last) {
           routeRef.current.push({ latitude: sLat, longitude: sLon, t });
         } else {
-          // 너무 촘촘하면 무거워지니까 2m 이상 이동했을 때만 추가
           const dd = haversineMeters(last.latitude, last.longitude, sLat, sLon);
           if (dd >= 2) routeRef.current.push({ latitude: sLat, longitude: sLon, t });
         }
@@ -1211,7 +1248,6 @@ export default function Record() {
     setDistanceKm("0.00");
     setTimeHms("00:00:00");
 
-    // ✅✅✅ route/splits도 리셋
     routeRef.current = [];
     setRouteLine([]);
     setFinishSplits([]);
@@ -1219,13 +1255,9 @@ export default function Record() {
   };
 
   useEffect(() => {
-    return () => {
-      stopAllTracking();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { stopAllTracking(); };
   }, []);
 
-  // ✅✅✅ FINISHED 시: 지도 라인이 보이게 fit
   useEffect(() => {
     if (runState !== "FINISHED") return;
     if (Platform.OS === "web") return;
@@ -1241,7 +1273,6 @@ export default function Record() {
     } catch {}
   }, [runState, mapReady, routeLine]);
 
-  // ===== 캘린더 =====
   const cells = buildMonthGrid(viewY, viewM);
   const monthTitle = `${viewY}-${String(viewM + 1).padStart(2, "0")}`;
 
@@ -1288,11 +1319,9 @@ export default function Record() {
     else if (label === "アカウント") router.push("/Account");
   };
 
-  // ✅✅✅ 오늘 측정 시작: 버튼 누르면 모달이 무조건 먼저 뜸 (단일 모달)
   const openStartFlow = async () => {
     setSelectedDate(todayISO);
 
-    // 로그인일 때 RUN 슬롯 체크
     if (!isGuest && userId) {
       const next = await getNextRunNo();
       if (!next) {
@@ -1301,11 +1330,9 @@ export default function Record() {
       }
     }
 
-    // RUN 화면으로 이동 + 초기화
     setStep("RUN");
     cancelAndReset();
 
-    // ✅ 모달 오픈
     setPlanStep("MODE");
     setPlanModalOpen(true);
     setRpeOpen(false);
@@ -1352,7 +1379,6 @@ export default function Record() {
     const k = planDraftKey;
     setSelectedPlanKey(k);
     setPlanGlobal(k);
-    // 서버 있으면 저장 시도
     await applyPlanToServer(k);
     notify("Drill", `プランを適用しました: ${PLAN_DATA[k].title}`);
     closePlanModal();
@@ -1385,7 +1411,6 @@ export default function Record() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: ui.bg, paddingTop: Platform.OS === "android" ? 6 : 0 }}>
-      {/* ✅ 전역 테마에 맞춰 StatusBar도 동기화 */}
       <StatusBar barStyle={mode === "dark" ? "light-content" : "dark-content"} />
 
       <View style={[styles.header, { borderBottomColor: ui.line, backgroundColor: ui.headerBg }]}>
@@ -1407,12 +1432,14 @@ export default function Record() {
           <Text style={{ color: ui.text, fontWeight: "900", fontSize: 15 }}>{step === "CALENDAR" ? "カレンダー" : "測定"}</Text>
           {isGuest ? <Text style={{ color: ui.muted, fontWeight: "900", fontSize: 11, marginTop: 2 }}>GUEST（保存不可）</Text> : null}
         </View>
+        <Text style={{ color: ui.muted, fontWeight: "900", fontSize: 11, marginTop: 2 }}>
+          
+        </Text>
 
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: TAB_H + 22 }}>
-        {/* ===================== CALENDAR ===================== */}
         {step === "CALENDAR" ? (
           <Card title="カレンダー" ui={ui}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -1441,7 +1468,6 @@ export default function Record() {
           </Card>
         ) : null}
 
-        {/* ===================== RUN ===================== */}
         {step === "RUN" ? (
           <View style={[styles.runWrap, { backgroundColor: ui.card, borderColor: ui.line }]}>
             <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 }}>
@@ -1449,32 +1475,27 @@ export default function Record() {
               <Text style={{ color: ui.muted, fontWeight: "800", marginTop: 4 }}>{planSummary}</Text>
             </View>
 
-            {/* ✅ 버튼 영역 (간결) */}
-            <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 10, alignItems: "center" }}>
               {runState === "IDLE" ? (
-                <PrimaryBtn label="START" onPress={startOrResumeTracking} ui={ui} />
+                <CircleBtn label="START" onPress={startOrResumeTracking} ui={ui} size={108} variant="primary" />
               ) : runState === "RUNNING" ? (
-                <View style={{ flexDirection: "row" }}>
-                  <GhostBtn label="一時停止" onPress={pauseTracking} ui={ui} grow />
-                  <View style={{ width: 10 }} />
-                  <DangerBtn label="終了" onPress={() => finishRunAndAutoSave("手動終了")} ui={ui} grow />
+                <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 18 }}>
+                  <CircleBtn label="一時停止" onPress={pauseTracking} ui={ui} size={96} variant="ghost" />
+                  <CircleBtn label="終了" onPress={() => finishRunAndAutoSave("手動終了")} ui={ui} size={96} variant="danger" />
                 </View>
               ) : runState === "PAUSED" ? (
-                <View style={{ flexDirection: "row" }}>
-                  <PrimaryBtn label="再開" onPress={startOrResumeTracking} ui={ui} grow />
-                  <View style={{ width: 10 }} />
-                  <DangerBtn label="終了して保存" onPress={() => finishRunAndAutoSave("一時停止から終了")} ui={ui} grow />
+                <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 18 }}>
+                  <CircleBtn label="再開" onPress={startOrResumeTracking} ui={ui} size={96} variant="primary" />
+                  <CircleBtn label="保存" onPress={() => finishRunAndAutoSave("一時停止から終了")} ui={ui} size={96} variant="danger" subLabel="終了して" />
                 </View>
               ) : (
-                <View style={{ flexDirection: "row" }}>
-                  <PrimaryBtn label="もう一度" onPress={cancelAndReset} ui={ui} grow />
-                  <View style={{ width: 10 }} />
-                  <GhostBtn label="カレンダー" onPress={() => setStep("CALENDAR")} ui={ui} grow />
+                <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 18 }}>
+                  <CircleBtn label="もう一度" onPress={cancelAndReset} ui={ui} size={92} variant="primary" />
+                  <CircleBtn label="カレンダー" onPress={() => setStep("CALENDAR")} ui={ui} size={92} variant="ghost" />
                 </View>
               )}
             </View>
 
-            {/* ✅ 거리/시간: 한 줄로 꽉 */}
             <View style={[styles.statsStrip, { borderTopColor: ui.line }]}>
               <View style={[styles.statsCell, { borderRightWidth: 1, borderRightColor: ui.line }]}>
                 <Text style={[styles.statsLabel, { color: ui.muted }]}>距離</Text>
@@ -1491,7 +1512,6 @@ export default function Record() {
               </View>
             </View>
 
-            {/* 목표 박스 */}
             <View style={{ padding: 16 }}>
               {goalMode === "DISTANCE" ? (
                 <View style={[styles.targetBoxBig, { borderColor: ui.pillActiveBorder, backgroundColor: ui.pillActiveBg }]}>
@@ -1505,7 +1525,6 @@ export default function Record() {
                 </View>
               )}
 
-              {/* ✅ 오늘의 드릴(달리는 중에도 계속 보이게) */}
               <View style={{ height: 12 }} />
               <View style={[styles.drillCard, { borderColor: ui.line, backgroundColor: ui.cellBg }]}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
@@ -1536,7 +1555,6 @@ export default function Record() {
                 <Text style={{ color: ui.text, fontWeight: "800", lineHeight: 18 }}>{drillTodayText}</Text>
               </View>
 
-              {/* ✅✅✅ 종료 후: 지도 + 스플릿 표시 */}
               {runState === "FINISHED" ? (
                 <View style={{ marginTop: 14 }}>
                   <Text style={{ color: ui.muted, fontWeight: "900" }}>ルート & Splits</Text>
@@ -1556,10 +1574,7 @@ export default function Record() {
                     <>
                       <View style={{ height: 220, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: ui.line }}>
                         <MapView
-                          ref={(r) => {
-                         mapRef.current = r;
-                          }}
-
+                          ref={(r) => { mapRef.current = r; }}
                           style={{ flex: 1 }}
                           onLayout={() => setMapReady(true)}
                           initialRegion={{
@@ -1601,7 +1616,6 @@ export default function Record() {
         ) : null}
       </ScrollView>
 
-      {/* ===================== ✅ 단일 플랜 모달 (바깥 스크롤 제거 / 내부만 스크롤) ===================== */}
       <Modal visible={planModalOpen} transparent animationType="fade" onRequestClose={closePlanModal}>
         <View style={[styles.modalOverlay, { backgroundColor: ui.overlay }]}>
           <Pressable style={StyleSheet.absoluteFillObject} onPress={closePlanModal} />
@@ -1614,7 +1628,6 @@ export default function Record() {
               ]}
               pointerEvents="auto"
             >
-              {/* ===== MODE ===== */}
               {planStep === "MODE" ? (
                 <>
                   <Text style={{ color: ui.text, fontWeight: "900", fontSize: 16 }}>今日の測定：設定</Text>
@@ -1665,7 +1678,6 @@ export default function Record() {
                 </>
               ) : null}
 
-              {/* ===== DISTANCE ===== */}
               {planStep === "DISTANCE" ? (
                 <>
                   <Text style={{ color: ui.text, fontWeight: "900", fontSize: 16 }}>距離目標</Text>
@@ -1708,7 +1720,6 @@ export default function Record() {
                 </>
               ) : null}
 
-              {/* ===== TIME ===== */}
               {planStep === "TIME" ? (
                 <>
                   <Text style={{ color: ui.text, fontWeight: "900", fontSize: 16 }}>時間目標</Text>
@@ -1735,7 +1746,6 @@ export default function Record() {
                 </>
               ) : null}
 
-              {/* ===== PLAN (Drill) ===== */}
               {planStep === "PLAN" ? (
                 <>
                   <Text style={{ color: ui.text, fontWeight: "900", fontSize: 16 }}>Drill（トレーニングプラン）</Text>
@@ -1795,7 +1805,6 @@ export default function Record() {
                     週プラン（今日：{todayDowLabel} を強調）
                   </Text>
 
-                  {/* ✅ 표는 내부만 스크롤 */}
                   <View style={{ borderRadius: 14, borderWidth: 1, borderColor: ui.line, overflow: "hidden" }}>
                     <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
                       {PLAN_DATA[planDraftKey].rows.map((r, idx) => {
@@ -1828,7 +1837,6 @@ export default function Record() {
                 </>
               ) : null}
 
-              {/* ===== 숫자 리스트만 스크롤 ===== */}
               {planStep === "PICK_H" || planStep === "PICK_M" || planStep === "PICK_S" ? (
                 <>
                   <Text style={{ color: ui.text, fontWeight: "900", fontSize: 16 }}>{pickerTitle(planStep)} を選択</Text>
@@ -1869,7 +1877,6 @@ export default function Record() {
         </View>
       </Modal>
 
-      {/* ✅ 날짜 상세 모달 (기존 유지) */}
       <Modal
         visible={dayModalOpen}
         transparent
@@ -1889,7 +1896,14 @@ export default function Record() {
           />
 
           <View style={styles.modalCenter} pointerEvents="box-none">
-            <View style={[styles.modalCard, styles.modalCardElevated, { backgroundColor: ui.card, borderColor: ui.line }]} pointerEvents="auto">
+            <View
+              style={[
+                styles.modalCard,
+                styles.modalCardElevated,
+                { backgroundColor: ui.card, borderColor: ui.line },
+              ]}
+              pointerEvents="auto"
+            >
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View>
                   <Text style={{ color: ui.text, fontWeight: "900", fontSize: 15 }}>{selectedDate}</Text>
@@ -1921,7 +1935,9 @@ export default function Record() {
                     <InfoRow label="距離" value={pickedKm ? `${pickedKm.toFixed(2)} km` : "-"} ui={ui} />
                     <InfoRow label="時間" value={pickedTime} ui={ui} />
                     <InfoRow label="消費カロリー" value={pickedKcal ? `${Math.round(pickedKcal)} kcal` : "-"} ui={ui} />
-                    <Text style={{ color: ui.muted, fontWeight: "800", marginTop: 8 }}>※ ゲストは詳細取得/削除はできません</Text>
+                    <Text style={{ color: ui.muted, fontWeight: "800", marginTop: 8 }}>
+                      ※ ゲストは詳細取得/削除はできません
+                    </Text>
                   </View>
                 ) : (
                   <Text style={{ color: ui.muted, fontWeight: "800" }}>記録なし</Text>
@@ -1935,7 +1951,33 @@ export default function Record() {
                     const splits = runId ? (splitMap[runId] ?? null) : null;
 
                     return (
-                      <View key={String(runId ?? idx)} style={{ padding: 12, borderRadius: 14, borderWidth: 1, borderColor: ui.line }}>
+                      <Pressable
+                        key={String(runId ?? idx)}
+                        onPress={() => {
+                          if (!runId) return;
+
+                          setDayModalOpen(false);
+
+                          setRouteModalRunId(Number(runId));
+                          setRouteModalOpen(true);
+                          setRouteModalLoading(true);
+                          setRouteModalLine([]);
+                          setRouteModalSplits([]);
+
+                          setTimeout(() => {
+                            openRouteModal(Number(runId));
+                          }, 80);
+                        }}
+                        style={({ pressed }) => [
+                          {
+                            padding: 12,
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: ui.line,
+                            opacity: pressed ? 0.85 : 1,
+                          },
+                        ]}
+                      >
                         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                           <Text style={{ color: ui.text, fontWeight: "900", flex: 1 }}>
                             {it.runNo ? `RUN ${it.runNo}` : `RUN ${idx + 1}`} {it.distanceType ? `(${it.distanceType})` : ""}
@@ -1943,16 +1985,42 @@ export default function Record() {
                           </Text>
 
                           {runId ? (
-                            <Pressable
-                              onPress={() => confirmDelete(runId)}
-                              style={({ pressed }) => [
-                                styles.deletePill,
-                                { borderColor: ui.danger, opacity: pressed ? 0.7 : 1, backgroundColor: ui.dangerBg },
-                              ]}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            >
-                              <Text style={{ color: ui.danger, fontWeight: "900" }}>削除</Text>
-                            </Pressable>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <Pressable
+                                onPress={(e) => {
+                                  // @ts-ignore
+                                  e?.stopPropagation?.();
+                                  openRouteModal(Number(runId));
+                                }}
+                                style={({ pressed }) => [
+                                  styles.viewMapPill,
+                                  {
+                                    borderColor: ui.pillActiveBorder,
+                                    backgroundColor: ui.pillActiveBg,
+                                    opacity: pressed ? 0.75 : 1,
+                                  },
+                                ]}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              >
+                                <Ionicons name="map-outline" size={14} color={ui.green} />
+                                <Text style={{ color: ui.green, fontWeight: "900" }}>詳細</Text>
+                              </Pressable>
+
+                              <Pressable
+                                onPress={(e) => {
+                                  // @ts-ignore
+                                  e?.stopPropagation?.();
+                                  confirmDelete(Number(runId));
+                                }}
+                                style={({ pressed }) => [
+                                  styles.deletePill,
+                                  { borderColor: ui.danger, opacity: pressed ? 0.7 : 1, backgroundColor: ui.dangerBg },
+                                ]}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              >
+                                <Text style={{ color: ui.danger, fontWeight: "900" }}>削除</Text>
+                              </Pressable>
+                            </View>
                           ) : null}
                         </View>
 
@@ -1965,11 +2033,13 @@ export default function Record() {
                         <Text style={{ color: ui.muted, fontWeight: "900" }}>Splits (1km)</Text>
 
                         {!runId ? (
-                          <Text style={{ color: ui.muted, fontWeight: "800", marginTop: 6 }}>runId が無いので splits を取得できません</Text>
+                          <Text style={{ color: ui.muted, fontWeight: "800", marginTop: 6 }}>
+                            runId が無いので splits を取得できません
+                          </Text>
                         ) : splits === null ? (
                           <Text style={{ color: ui.muted, fontWeight: "800", marginTop: 6 }}>splits 読み込み中...</Text>
                         ) : splits.length === 0 ? (
-                          <Text style={{ color: ui.muted, fontWeight: "800", marginTop: 6 }}>スプリットデータ 없음</Text>
+                          <Text style={{ color: ui.muted, fontWeight: "800", marginTop: 6 }}>スプリットデータが存在しません。</Text>
                         ) : (
                           <View style={{ marginTop: 8, gap: 6 }}>
                             {splits.map((sp, sidx) => {
@@ -1982,7 +2052,9 @@ export default function Record() {
                                   </Text>
                                   <Text style={{ color: ui.text, fontWeight: "900" }}>
                                     {secToMmss(Number(sp.sec || 0))}{" "}
-                                    <Text style={{ color: ui.muted, fontWeight: "800" }}>({secToMmss(paceSec)}/km)</Text>
+                                    <Text style={{ color: ui.muted, fontWeight: "800" }}>
+                                      ({secToMmss(paceSec)}/km)
+                                    </Text>
                                   </Text>
                                 </View>
                               );
@@ -1997,7 +2069,7 @@ export default function Record() {
                             <Text style={{ color: ui.text, fontWeight: "800", marginTop: 4 }}>{it.memo}</Text>
                           </>
                         ) : null}
-                      </View>
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -2028,13 +2100,123 @@ export default function Record() {
               </View>
 
               <View style={{ height: 10 }} />
-
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* ✅ index.tsx 최종본이랑 똑같은 하단 탭 */}
+      <Modal
+        visible={routeModalOpen}
+        transparent
+        animationType="fade"
+        presentationStyle="overFullScreen"
+        statusBarTranslucent
+        onRequestClose={closeRouteModal}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: ui.overlay }]}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={closeRouteModal} />
+
+          <View style={styles.modalCenter} pointerEvents="box-none">
+            <View
+              style={[
+                styles.modalCard,
+                styles.modalCardElevated,
+                { backgroundColor: ui.card, borderColor: ui.line, maxHeight: "86%" as any },
+              ]}
+              pointerEvents="auto"
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View>
+                  <Text style={{ color: ui.text, fontWeight: "900", fontSize: 15 }}>
+                    ルート詳細 {routeModalRunId ? `#${routeModalRunId}` : ""}
+                  </Text>
+                  <Text style={{ color: ui.muted, fontWeight: "800", fontSize: 12, marginTop: 4 }}>
+                    地図 + ルート + Splits
+                  </Text>
+                </View>
+
+                <Pressable
+                  onPress={closeRouteModal}
+                  style={({ pressed }) => [
+                    styles.modalCloseBtn,
+                    { borderColor: ui.line, backgroundColor: ui.backBtnBg, opacity: pressed ? 0.75 : 1 },
+                  ]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={{ color: ui.text, fontWeight: "900" }}>×</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ height: 12 }} />
+
+              {routeModalLoading ? (
+                <Text style={{ color: ui.muted, fontWeight: "800" }}>読み込み中...</Text>
+              ) : Platform.OS === "web" ? (
+                <View style={{ padding: 12, borderRadius: 14, borderWidth: 1, borderColor: ui.line, backgroundColor: ui.cellBg }}>
+                  <Text style={{ color: ui.muted, fontWeight: "800" }}>
+                    Webでは地図表示が不安定です。スマホ実機で確認してください。
+                  </Text>
+                </View>
+              ) : routeModalLine.length < 2 ? (
+                <View style={{ padding: 12, borderRadius: 14, borderWidth: 1, borderColor: ui.line, backgroundColor: ui.cellBg }}>
+                  <Text style={{ color: ui.muted, fontWeight: "800" }}>
+                    ルートデータがありません。（route_points 未保存の可能性）
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ height: 240, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: ui.line }}>
+                  <MapView
+                    ref={(r) => {
+                      routeModalMapRef.current = r;
+                    }}
+                    style={{ flex: 1 }}
+                    onLayout={() => setRouteModalMapReady(true)}
+                    initialRegion={{
+                      latitude: routeModalLine[0].latitude,
+                      longitude: routeModalLine[0].longitude,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }}
+                  >
+                    <Polyline coordinates={routeModalLine} strokeWidth={4} strokeColor={ui.green} />
+                    <Marker coordinate={routeModalLine[0]} title="START" />
+                    <Marker coordinate={routeModalLine[routeModalLine.length - 1]} title="FINISH" />
+                  </MapView>
+                </View>
+              )}
+
+              <View style={{ height: 14 }} />
+              <Text style={{ color: ui.muted, fontWeight: "900" }}>Splits (1km)</Text>
+
+              {routeModalSplits.length === 0 ? (
+                <Text style={{ color: ui.muted, fontWeight: "800", marginTop: 8 }}>スプリットなし</Text>
+              ) : (
+                <View style={{ marginTop: 10, gap: 6 }}>
+                  {routeModalSplits.map((sp, idx) => {
+                    const segKm = Math.max(0.001, Number(sp.m || 0) / 1000);
+                    const paceSec = Math.round(Number(sp.sec || 0) / segKm);
+                    return (
+                      <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                        <Text style={{ color: ui.text, fontWeight: "900" }}>
+                          {sp.km}km <Text style={{ color: ui.muted, fontWeight: "800" }}>({Math.round(sp.m)}m)</Text>
+                        </Text>
+                        <Text style={{ color: ui.text, fontWeight: "900" }}>
+                          {secToMmss(Number(sp.sec || 0))}{" "}
+                          <Text style={{ color: ui.muted, fontWeight: "800" }}>({secToMmss(paceSec)}/km)</Text>
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              <View style={{ height: 14 }} />
+              <GhostBtn label="閉じる" onPress={closeRouteModal} ui={ui} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <View style={[styles.bottomTabs, { borderTopColor: ui.line, backgroundColor: ui.bg }]}>
         <TabBtn label="ホーム" icon="home-outline" active={activeKey === "ホーム"} onPress={() => onTap("ホーム")} ui={ui} />
         <TabBtn label="記録" icon="walk-outline" active={activeKey === "記録"} onPress={() => onTap("記録")} ui={ui} />
@@ -2045,8 +2227,6 @@ export default function Record() {
     </SafeAreaView>
   );
 }
-
-/* ===================== ✅ 캘린더 ===================== */
 
 function RunCalendarGrid({
   ui,
@@ -2133,8 +2313,6 @@ function RunCalendarGrid({
   );
 }
 
-/* ===== small UI ===== */
-
 function Card({ title, children, ui }: any) {
   return (
     <View style={[styles.card, { backgroundColor: ui.card, borderColor: ui.line }]}>
@@ -2161,22 +2339,6 @@ function PrimaryBtn({ label, onPress, ui, grow }: any) {
   );
 }
 
-function DangerBtn({ label, onPress, ui, grow }: any) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.dangerBtn,
-        !grow ? { alignSelf: "stretch" } : { flex: 1 },
-        { borderColor: ui.danger, backgroundColor: ui.dangerBg, opacity: pressed ? 0.85 : 1 },
-      ]}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-    >
-      <Text style={{ color: ui.danger, fontWeight: "900" }}>{label}</Text>
-    </Pressable>
-  );
-}
-
 function GhostBtn({ label, onPress, ui, small, grow }: any) {
   return (
     <Pressable
@@ -2189,6 +2351,41 @@ function GhostBtn({ label, onPress, ui, small, grow }: any) {
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <Text style={{ color: ui.text, fontWeight: "900" }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function CircleBtn({ label, onPress, ui, variant = "primary", size = 92, subLabel }: any) {
+  const isPrimary = variant === "primary";
+  const isDanger = variant === "danger";
+
+  const bg = isPrimary ? ui.green : isDanger ? ui.dangerBg : ui.ghostBg;
+  const border = isPrimary ? "transparent" : isDanger ? ui.danger : ui.line;
+  const textColor = isPrimary ? "#08110b" : isDanger ? ui.danger : ui.text;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.circleBtnBase,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: isPrimary ? 0 : 1,
+          borderColor: border,
+          backgroundColor: bg,
+          opacity: pressed ? 0.82 : 1,
+        },
+      ]}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Text style={{ color: textColor, fontWeight: "900", fontSize: 16 }}>{label}</Text>
+      {subLabel ? (
+        <Text style={{ marginTop: 4, color: textColor, fontWeight: "900", fontSize: 11, opacity: 0.85 }}>
+          {subLabel}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -2221,7 +2418,6 @@ function InfoRow({ label, value, ui }: any) {
   );
 }
 
-/** ✅ 셀렉트 박스(드롭다운 느낌) */
 function SelectBox({ label, value, onPress, ui }: any) {
   return (
     <Pressable
@@ -2242,8 +2438,6 @@ function SelectBox({ label, value, onPress, ui }: any) {
   );
 }
 
-/* ===== Bottom Tab Button (index.tsx와 동일) ===== */
-
 function TabBtn({ label, icon, onPress, active, ui }: any) {
   const color = active ? ui.green : ui.text;
   const pillStyle = active
@@ -2263,8 +2457,6 @@ function TabBtn({ label, icon, onPress, active, ui }: any) {
     </Pressable>
   );
 }
-
-/* ===== styles ===== */
 
 const styles = StyleSheet.create({
   header: {
@@ -2305,14 +2497,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dangerBtn: {
-    minHeight: 50,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   ghostBtn: {
     minHeight: 50,
     paddingVertical: 12,
@@ -2326,6 +2510,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  circleBtnBase: {
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2367,6 +2556,16 @@ const styles = StyleSheet.create({
   },
 
   deletePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+
+  viewMapPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 999,
